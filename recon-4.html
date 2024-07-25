@@ -113,6 +113,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            background: white;
         }
         .component-header-top {
             display: flex;
@@ -417,23 +418,7 @@ function createItemElement(item) {
 
     return itemElement;
 }
-function navigateItems(direction) {
-    const items = Array.from(document.querySelectorAll('.item'));
-    const selectedIndex = items.findIndex(item => item.classList.contains('selected'));
 
-    if (selectedIndex === -1) return; // No item selected
-
-    let newIndex;
-    if (direction === 'next') {
-        newIndex = (selectedIndex + 1) % items.length;
-    } else if (direction === 'previous') {
-        newIndex = (selectedIndex - 1 + items.length) % items.length;
-    }
-
-    items[selectedIndex].classList.remove('selected');
-    items[newIndex].classList.add('selected');
-    items[newIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
 
 
         async function populateItems(query) {
@@ -445,34 +430,18 @@ function navigateItems(direction) {
                 itemList.appendChild(itemElement);
             });
         }
+
         document.addEventListener('DOMContentLoaded', () => {
-    const searchButton = document.getElementById('searchButton');
-    const searchInput = document.getElementById('searchInput');
+            const searchButton = document.getElementById('searchButton');
+            const searchInput = document.getElementById('searchInput');
 
-    searchButton.addEventListener('click', () => {
-        const query = searchInput.value.trim();
-        if (query) {
-            populateItems(query);
-        }
-    });
-
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            searchButton.click();
-        }
-    });
-
-    // Add arrow key navigation
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-            navigateItems('next');
-        } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-            navigateItems('previous');
-        }
-    });
-});
-
+            searchButton.addEventListener('click', () => {
+                const query = searchInput.value.trim();
+                if (query) {
+                    populateItems(query);
+                }
+            });
+        });
     </script>
 </body>
 </html>
