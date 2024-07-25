@@ -28,7 +28,7 @@
             height: 25px;
         }
         .section-2 {
-            height: 100px;
+            height: 50px;
             display: flex;
             align-items: center;
             padding: 0 10px;
@@ -54,13 +54,23 @@
             padding: 10px;
         }
         .item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            background-color: #fff;
-            padding: 10px;
-            border-radius: 5px;
-        }
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        border-bottom: 1px solid #ccc;
+        cursor: pointer;
+        background-color: white;
+        border-radius: 5px;
+        margin-bottom: 10px; /* Add gap between items */
+    }
+    .item.selected {
+        background-color: #1EACFC;
+        color: white;
+    }
+    .item.selected .qid-link {
+        color: white;
+        text-decoration: underline;
+    }
         .item img {
             width: 50px;
             height: 50px;
@@ -98,7 +108,7 @@
             flex-direction: column;
         }
         .component-header {
-            height: 100px;
+            height: 80px;
             padding: 10px;
             display: flex;
             flex-direction: column;
@@ -116,18 +126,21 @@
         .component-header-bottom {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 2px;
         }
         .component-header-bottom .row {
             display: flex;
             align-items: center;
             gap: 10px;
+            font-size: 0.9em;
         }
         .component-header-bottom .row select {
             border: none;
+            font-size: 0.9em;
         }
         .component-header-bottom .row input {
-            height: 20px;
+            height: 15px;
+            font-size: 0.9em;
         }
         .component-body {
             flex: 1;
@@ -342,53 +355,70 @@
         </div>
     </div>
     <script>
-        async function fetchWikidataItems(query) {
-            const sparqlQuery = `
-            SELECT ?item ?itemLabel ?itemDescription ?image WHERE {
-                ?item ?label "${query}"@en.
-                OPTIONAL { ?item wdt:P18 ?image. }
-                SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-            } LIMIT 8`;
-            const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
-            const response = await fetch(url);
-            const data = await response.json();
-            return data.results.bindings;
+async function fetchWikidataItems(query) {
+    const sparqlQuery = `
+    SELECT ?item ?itemLabel ?itemDescription ?image WHERE {
+        SERVICE wikibase:mwapi {
+            bd:serviceParam wikibase:endpoint "www.wikidata.org";
+                             wikibase:api "EntitySearch";
+                             mwapi:search "${query}";
+                             mwapi:language "en";
+                             mwapi:limit "8".
+            ?item wikibase:apiOutputItem mwapi:item.
+            ?item wikibase:apiOutputItemLabel mwapi:label.
         }
+        OPTIONAL { ?item wdt:P18 ?image. }
+        SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+    } LIMIT 8`;
+    const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+    const response = await fetch(url);
+    const data = await response.json();
+    return data.results.bindings;
+}
 
-        function createItemElement(item) {
-            const itemElement = document.createElement('div');
-            itemElement.className = 'item';
+function createItemElement(item) {
+    const itemElement = document.createElement('div');
+    itemElement.className = 'item';
 
-            const img = document.createElement('img');
-            img.src = item.image ? item.image.value : 'https://via.placeholder.com/50';
-            img.alt = 'QID Image';
+    itemElement.addEventListener('click', () => {
+        document.querySelectorAll('.item').forEach(el => el.classList.remove('selected'));
+        itemElement.classList.add('selected');
+    });
 
-            const details = document.createElement('div');
-            details.className = 'item-details';
+    const img = document.createElement('img');
+    img.src = item.image ? item.image.value : 'https://via.placeholder.com/50';
+    img.alt = 'QID Image';
 
-            const labelLink = document.createElement('a');
-            labelLink.href = `https://www.wikidata.org/wiki/${item.item.value.split('/').pop()}`;
-            labelLink.className = 'label';
-            labelLink.textContent = item.itemLabel.value;
-            details.appendChild(labelLink);
+    const details = document.createElement('div');
+    details.className = 'item-details';
 
-            const qid = document.createElement('span');
-            qid.textContent = ` (${item.item.value.split('/').pop()})`;
-            details.appendChild(qid);
+    const label = document.createElement('span');
+    label.style.fontWeight = 'bold';
+    label.textContent = item.itemLabel.value + ' ';
+    details.appendChild(label);
 
-            const description = document.createElement('div');
-            description.textContent = item.itemDescription ? item.itemDescription.value : 'No description available';
-            details.appendChild(description);
+    const labelLink = document.createElement('a');
+    labelLink.href = `https://www.wikidata.org/wiki/${item.item.value.split('/').pop()}`;
+    labelLink.className = 'qid-link';
+    labelLink.textContent = item.item.value.split('/').pop();
+    labelLink.target = '_blank';
+    details.appendChild(labelLink);
 
-            const button = document.createElement('button');
-            button.textContent = 'Match';
+    const description = document.createElement('div');
+    description.textContent = item.itemDescription ? item.itemDescription.value : 'No description available';
+    details.appendChild(description);
 
-            itemElement.appendChild(img);
-            itemElement.appendChild(details);
-            itemElement.appendChild(button);
+    const button = document.createElement('button');
+    button.textContent = 'Match';
 
-            return itemElement;
-        }
+    itemElement.appendChild(img);
+    itemElement.appendChild(details);
+    itemElement.appendChild(button);
+
+    return itemElement;
+}
+
+
 
         async function populateItems(query) {
             const itemList = document.getElementById('itemList');
