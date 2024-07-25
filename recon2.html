@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Full Screen Interface</title>
     <style>
+        /* Your CSS remains the same */
         body, html {
             margin: 0;
             padding: 0;
@@ -54,23 +55,23 @@
             padding: 10px;
         }
         .item {
-        display: flex;
-        align-items: center;
-        padding: 10px;
-        border-bottom: 1px solid #ccc;
-        cursor: pointer;
-        background-color: white;
-        border-radius: 5px;
-        margin-bottom: 10px; /* Add gap between items */
-    }
-    .item.selected {
-        background-color: #1EACFC;
-        color: white;
-    }
-    .item.selected .qid-link {
-        color: white;
-        text-decoration: underline;
-    }
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            cursor: pointer;
+            background-color: white;
+            border-radius: 5px;
+            margin-bottom: 10px; /* Add gap between items */
+        }
+        .item.selected {
+            background-color: #1EACFC;
+            color: white;
+        }
+        .item.selected .qid-link {
+            color: white;
+            text-decoration: underline;
+        }
         .item img {
             width: 50px;
             height: 50px;
@@ -98,12 +99,11 @@
             flex: 1;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
             gap: 10px;
             padding: 10px;
         }
         .component {
-            background-color: #c0c0c0;
+            background-color: white; /* Changed from #c0c0c0 to white */
             display: flex;
             flex-direction: column;
         }
@@ -156,7 +156,7 @@
             </div>
             <div>
                 <select>
-                    <option>Add view</option>
+                    <option>Select view</option>
                     <option>Display value</option>
                     <option>View web page</option>
                     <option>View Wikimedia site</option>
@@ -165,6 +165,7 @@
                     <option>View all properties</option>
                     <option>Reconciliation settings</option>
                 </select>
+                
                 <button>Close</button>
             </div>
         </div>
@@ -186,7 +187,7 @@
                                 <option>Select view</option>
                                 <option>Display value</option>
                                 <option>View web page</option>
-                                <option>View Wikimedia site</option>
+                                <option selected>View Wikimedia site</option>
                                 <option>Compare coordinates</option>
                                 <option>Compare dates</option>
                                 <option>View all properties</option>
@@ -201,113 +202,26 @@
                         </div>
                         <div class="component-header-bottom">
                             <div class="row">
-                                <div class="bold-text">Header 1</div>
-                                <div>Simple text 1</div>
-                                <select>
-                                    <option>Option 1</option>
-                                    <option>Option 2</option>
+                                <div class="bold-text">Project</div>
+                                <select id="projectSelect">
+                                    <option>Wikidocumentaries</option>
+                                    <option>Wikipedia</option>
+                                    <option>Wikimedia Commons</option>
                                 </select>
-                                <input type="text" placeholder="Input 1">
+                                <select id="languageSelect">
+                                    <option>English</option>
+                                    <option>Finnish</option>
+                                </select>
                             </div>
                             <div class="row">
-                                <div class="bold-text">Header 2</div>
-                                <div>Simple text 2</div>
-                                <select>
-                                    <option>Option 3</option>
-                                    <option>Option 4</option>
-                                </select>
-                                <input type="text" placeholder="Input 2">
+                                <a id="projectUrl" href="#" target="_blank">Simple text</a>
                             </div>
                         </div>
                     </div>
-                    <div class="component-body"></div>
-                </div>
-                <div class="component">
-                    <div class="component-header">
-                        <div class="component-header-top">
-                            <select>
-                                <option>Select view</option>
-                                <option>Display value</option>
-                                <option>View web page</option>
-                                <option>View Wikimedia site</option>
-                                <option>Compare coordinates</option>
-                                <option>Compare dates</option>
-                                <option>View all properties</option>
-                                <option>Reconciliation settings</option>
-                            </select>
-                            <select>
-                                <option>View</option>
-                                <option>Maximize</option>
-                                <option>Minimize</option>
-                                <option>Close</option>
-                            </select>
-                        </div>
-                        <div class="component-header-bottom">
-                            <div class="row">
-                                <div class="bold-text">Header 1</div>
-                                <div>Simple text 1</div>
-                                <select>
-                                    <option>Option 1</option>
-                                    <option>Option 2</option>
-                                </select>
-                                <input type="text" placeholder="Input 1">
-                            </div>
-                            <div class="row">
-                                <div class="bold-text">Header 2</div>
-                                <div>Simple text 2</div>
-                                <select>
-                                    <option>Option 3</option>
-                                    <option>Option 4</option>
-                                </select>
-                                <input type="text" placeholder="Input 2">
-                            </div>
-                        </div>
+                    <div class="component-body">
+                        <iframe id="projectIframe" style="width: 100%; height: 100%; border: none;"></iframe>
                     </div>
-                    <div class="component-body"></div>
-                </div>
-                <div class="component">
-                    <div class="component-header">
-                        <div class="component-header-top">
-                            <select>
-                                <option>Select view</option>
-                                <option>Display value</option>
-                                <option>View web page</option>
-                                <option>View Wikimedia site</option>
-                                <option>Compare coordinates</option>
-                                <option>Compare dates</option>
-                                <option>View all properties</option>
-                                <option>Reconciliation settings</option>
-                            </select>
-                            <select>
-                                <option>View</option>
-                                <option>Maximize</option>
-                                <option>Minimize</option>
-                                <option>Close</option>
-                            </select>
-                        </div>
-                        <div class="component-header-bottom">
-                            <div class="row">
-                                <div class="bold-text">Header 1</div>
-                                <div>Simple text 1</div>
-                                <select>
-                                    <option>Option 1</option>
-                                    <option>Option 2</option>
-                                </select>
-                                <input type="text" placeholder="Input 1">
-                            </div>
-                            <div class="row">
-                                <div class="bold-text">Header 2</div>
-                                <div>Simple text 2</div>
-                                <select>
-                                    <option>Option 3</option>
-                                    <option>Option 4</option>
-                                </select>
-                                <input type="text" placeholder="Input 2">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="component-body"></div>
-                </div>
+                </div>                
                 <div class="component">
                     <div class="component-header">
                         <div class="component-header-top">
@@ -355,88 +269,150 @@
         </div>
     </div>
     <script>
-async function fetchWikidataItems(query) {
-    const sparqlQuery = `
-    SELECT ?item ?itemLabel ?itemDescription ?image WHERE {
-        SERVICE wikibase:mwapi {
-            bd:serviceParam wikibase:endpoint "www.wikidata.org";
-                             wikibase:api "EntitySearch";
-                             mwapi:search "${query}";
-                             mwapi:language "en";
-                             mwapi:limit "8".
-            ?item wikibase:apiOutputItem mwapi:item.
-            ?item wikibase:apiOutputItemLabel mwapi:label.
+        async function fetchWikidataItems(query) {
+            // The function to fetch items from Wikidata
+            const sparqlQuery = `
+            SELECT ?item ?itemLabel ?itemDescription ?image WHERE {
+                SERVICE wikibase:mwapi {
+                    bd:serviceParam wikibase:endpoint "www.wikidata.org";
+                                 wikibase:api "EntitySearch";
+                                 mwapi:search "${query}";
+                                 mwapi:language "en";
+                                 mwapi:limit "8".
+                ?item wikibase:apiOutputItem mwapi:item.
+                ?item wikibase:apiOutputItemLabel mwapi:label.
+            }
+            OPTIONAL { ?item wdt:P18 ?image. }
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+            } LIMIT 8`;
+            const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+            const response = await fetch(url);
+            const data = await response.json();
+            return data.results.bindings;
         }
-        OPTIONAL { ?item wdt:P18 ?image. }
-        SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-    } LIMIT 8`;
-    const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
-    const response = await fetch(url);
-    const data = await response.json();
-    return data.results.bindings;
-}
 
-function createItemElement(item) {
-    const itemElement = document.createElement('div');
-    itemElement.className = 'item';
+        function createItemElement(item) {
+            // The function to create a new item element
+            const itemElement = document.createElement('div');
+            itemElement.className = 'item';
 
-    itemElement.addEventListener('click', () => {
-        document.querySelectorAll('.item').forEach(el => el.classList.remove('selected'));
-        itemElement.classList.add('selected');
-    });
+            itemElement.addEventListener('click', () => {
+                document.querySelectorAll('.item').forEach(el => el.classList.remove('selected'));
+                itemElement.classList.add('selected');
 
-    const img = document.createElement('img');
-    img.src = item.image ? item.image.value : 'https://via.placeholder.com/50';
-    img.alt = 'QID Image';
+                const qid = item.item.value.split('/').pop();
+                const url = `https://wikidocumentaries-demo.wmcloud.org/${qid}`;
+                
+                const projectUrl = document.getElementById('projectUrl');
+                projectUrl.href = url;
+                projectUrl.textContent = url;
 
-    const details = document.createElement('div');
-    details.className = 'item-details';
+                const iframe = document.getElementById('projectIframe');
+                iframe.src = url;
+                
+                iframe.onload = () => {
+                    const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
+                    const style = iframeDocument.createElement('style');
+                    style.textContent = `
+                        body {
+                            transform: scale(0.8);
+                            transform-origin: 0 0;
+                            width: 125%; /* Adjust width to account for scaling */
+                            height: 125%; /* Adjust height to account for scaling */
+                        }
+                    `;
+                    iframeDocument.head.appendChild(style);
+                };
+            });
 
-    const label = document.createElement('span');
-    label.style.fontWeight = 'bold';
-    label.textContent = item.itemLabel.value + ' ';
-    details.appendChild(label);
+            const img = document.createElement('img');
+            img.src = item.image ? item.image.value : 'https://via.placeholder.com/50';
+            img.alt = 'QID Image';
 
-    const labelLink = document.createElement('a');
-    labelLink.href = `https://www.wikidata.org/wiki/${item.item.value.split('/').pop()}`;
-    labelLink.className = 'qid-link';
-    labelLink.textContent = item.item.value.split('/').pop();
-    labelLink.target = '_blank';
-    details.appendChild(labelLink);
+            const details = document.createElement('div');
+            details.className = 'item-details';
 
-    const description = document.createElement('div');
-    description.textContent = item.itemDescription ? item.itemDescription.value : 'No description available';
-    details.appendChild(description);
+            const label = document.createElement('span');
+            label.style.fontWeight = 'bold';
+            label.textContent = item.itemLabel.value + ' ';
+            details.appendChild(label);
 
-    const button = document.createElement('button');
-    button.textContent = 'Match';
+            const labelLink = document.createElement('a');
+            labelLink.href = `https://www.wikidata.org/wiki/${item.item.value.split('/').pop()}`;
+            labelLink.className = 'qid-link';
+            labelLink.textContent = item.item.value.split('/').pop();
+            labelLink.target = '_blank';
+            details.appendChild(labelLink);
 
-    itemElement.appendChild(img);
-    itemElement.appendChild(details);
-    itemElement.appendChild(button);
+            const description = document.createElement('div');
+            description.textContent = item.itemDescription ? item.itemDescription.value : 'No description available';
+            details.appendChild(description);
 
-    return itemElement;
-}
-function navigateItems(direction) {
-    const items = Array.from(document.querySelectorAll('.item'));
-    const selectedIndex = items.findIndex(item => item.classList.contains('selected'));
+            const button = document.createElement('button');
+            button.textContent = 'Match';
 
-    if (selectedIndex === -1) return; // No item selected
+            itemElement.appendChild(img);
+            itemElement.appendChild(details);
+            itemElement.appendChild(button);
 
-    let newIndex;
-    if (direction === 'next') {
-        newIndex = (selectedIndex + 1) % items.length;
-    } else if (direction === 'previous') {
-        newIndex = (selectedIndex - 1 + items.length) % items.length;
-    }
+            return itemElement;
+        }
 
-    items[selectedIndex].classList.remove('selected');
-    items[newIndex].classList.add('selected');
-    items[newIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
+        function navigateItems(direction) {
+            const items = Array.from(document.querySelectorAll('.item'));
+            const selectedIndex = items.findIndex(item => item.classList.contains('selected'));
 
+            if (selectedIndex === -1) return; // No item selected
+
+            let newIndex;
+            if (direction === 'next') {
+                newIndex = (selectedIndex + 1) % items.length;
+            } else if (direction === 'previous') {
+                newIndex = (selectedIndex - 1 + items.length) % items.length;
+            }
+
+            // Only change selection if the new index is different
+            if (newIndex !== selectedIndex) {
+                items[selectedIndex].classList.remove('selected');
+                items[newIndex].classList.add('selected');
+                items[newIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // Simulate a click event for the newly selected item
+                items[newIndex].click();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Event listeners for the search functionality and key navigation
+            const searchButton = document.getElementById('searchButton');
+            const searchInput = document.getElementById('searchInput');
+
+            searchButton.addEventListener('click', () => {
+                const query = searchInput.value.trim();
+                if (query) {
+                    populateItems(query);
+                }
+            });
+
+            searchInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    searchButton.click();
+                }
+            });
+
+            // Add arrow key navigation
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+                    navigateItems('next');
+                } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+                    navigateItems('previous');
+                }
+            });
+        });
 
         async function populateItems(query) {
+            // The function to populate items
             const itemList = document.getElementById('itemList');
             itemList.innerHTML = ''; // Clear previous items
             const items = await fetchWikidataItems(query);
@@ -445,34 +421,6 @@ function navigateItems(direction) {
                 itemList.appendChild(itemElement);
             });
         }
-        document.addEventListener('DOMContentLoaded', () => {
-    const searchButton = document.getElementById('searchButton');
-    const searchInput = document.getElementById('searchInput');
-
-    searchButton.addEventListener('click', () => {
-        const query = searchInput.value.trim();
-        if (query) {
-            populateItems(query);
-        }
-    });
-
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            searchButton.click();
-        }
-    });
-
-    // Add arrow key navigation
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-            navigateItems('next');
-        } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-            navigateItems('previous');
-        }
-    });
-});
-
     </script>
 </body>
 </html>
