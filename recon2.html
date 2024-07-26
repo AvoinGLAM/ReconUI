@@ -94,6 +94,44 @@
             display: flex;
             flex-direction: column;
         }
+        .component-header {
+            height: 80px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .component-header-top {
+            display: flex;
+            justify-content: space-between;
+        }
+        .component-header-top select {
+            font-size: 1.2em;
+            border: none;
+            background: none;
+            font-weight: bold;
+        }
+        .component-header-bottom {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .component-header-bottom .row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+        .component-header-bottom .row select {
+            border: none;
+            font-size: 0.9em;
+
+        }
+        .component-header-bottom .row input {
+            height: 15px;
+            font-size: 0.9em;
+            flex: 1;
+        }
         .component-body {
             flex: 1;
         }
@@ -166,11 +204,70 @@
             </div>
             <div class="right-pane">
                 <div class="component">
+                    <div class="component-header">
+                        <div class="component-header-top">
+                            <select>
+                                <option>Select view</option>
+                                <option>Display value</option>
+                                <option>View web page</option>
+                                <option selected>View Wikimedia site</option>
+                                <option>Compare coordinates</option>
+                                <option>Compare dates</option>
+                                <option>View all properties</option>
+                                <option>Reconciliation settings</option>
+                            </select>
+                            <select>
+                                <option>View</option>
+                                <option>Maximize</option>
+                                <option>Close</option>
+                            </select>
+                        </div>
+                        <div class="component-header-bottom">
+                            <div class="row">
+                                <div class="bold-text">Project</div>
+                                <select id="projectSelect">
+                                    <option>Wikidocumentaries</option>
+                                    <option>Wikipedia</option>
+                                    <option>Wikimedia Commons</option>
+                                </select>
+                                <select id="languageSelect">
+                                    <option>English</option>
+                                    <option>Finnish</option>
+                                </select>
+                            </div>
+                            <div class="row">
+                                <a id="projectUrl" href="#" target="_blank">Simple text</a>
+                            </div>
+                        </div>
+                    </div>
                     <div class="component-body">
                         <iframe id="projectIframe" style="width: 100%; height: 100%; border: none;"></iframe>
                     </div>
                 </div>
                 <div class="component">
+                    <div class="component-header">
+                        <div class="component-header-top">
+                            <select>
+                                <option>Select view</option>
+                                <option>Display value</option>
+                                <option>View web page</option>
+                                <option>View Wikimedia site</option>
+                                <option selected>Compare coordinates</option>
+                                <option>Compare dates</option>
+                                <option>View all properties</option>
+                                <option>Reconciliation settings</option>
+                            </select>
+                            <select>
+                                <option>View</option>
+                                <option>Maximize</option>
+                                <option>Close</option>
+                            </select>
+                        </div>
+                        <div class="component-header-bottom">
+                            <div class="row">
+                            </div>
+                        </div>
+                    </div>
                     <div class="component-body">
                         <div id="map" style="width: 100%; height: 100%;"></div>
                     </div>
