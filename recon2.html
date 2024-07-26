@@ -355,34 +355,6 @@
             return itemElement;
         }
 
-        async function populateItems(query) {
-            const itemList = document.getElementById('itemList');
-            itemList.innerHTML = ''; // Clear previous items
-            const items = await fetchWikidataItems(query);
-
-            // Initialize map markers array
-            const markers = [];
-
-            items.forEach(item => {
-                const itemElement = createItemElement(item);
-                itemList.appendChild(itemElement);
-
-                // Add coordinates to map if available
-                if (item.coord) {
-                    const coords = item.coord.value.replace('Point(', '').replace(')', '').split(' ');
-                    const lat = parseFloat(coords[1]);
-                    const lon = parseFloat(coords[0]);
-
-                    const marker = L.marker([lat, lon]).bindPopup(`${item.itemLabel.value}`);
-                    markers.push(marker);
-                }
-            });
-
-            // Add all markers to the map
-            const markerGroup = L.featureGroup(markers).addTo(map);
-            map.fitBounds(markerGroup.getBounds());
-        }
-
 
         function navigateItems(direction) {
             const items = Array.from(document.querySelectorAll('.item'));
@@ -445,11 +417,6 @@
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             }).addTo(map);
-
-            // Add an example marker, you can remove this or add other markers as needed
-            L.marker([51.5, -0.09]).addTo(map)
-                .bindPopup('A pretty CSS3 popup.<br> Easily customizable.')
-                .openPopup();
         }
 
         document.addEventListener('DOMContentLoaded', (event) => {
@@ -474,7 +441,18 @@
                     const lat = parseFloat(coords[1]);
                     const lon = parseFloat(coords[0]);
 
-                    const marker = L.marker([lat, lon]).bindPopup(`${item.itemLabel.value}`);
+                    // Prepare popup content
+                    const imageUrl = item.image ? item.image.value : 'https://via.placeholder.com/100';
+                    const qid = item.item.value.split('/').pop();
+                    const popupContent = `
+                        <div style="text-align: center;">
+                            <img src="${imageUrl}" alt="Image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 5px;"/><br>
+                            <strong>${item.itemLabel.value}</strong><br>
+                            ${item.itemDescription ? item.itemDescription.value : 'No description available'}<br>
+                            <a href="https://www.wikidata.org/wiki/${qid}" target="_blank">${qid}</a>
+                        </div>
+                    `;
+                    const marker = L.marker([lat, lon]).bindPopup(popupContent);
                     markers.push(marker);
                 }
 
@@ -488,6 +466,7 @@
             const markerGroup = L.featureGroup(markers).addTo(map);
             map.fitBounds(markerGroup.getBounds());
         }
+
 
     </script>
 </body>
