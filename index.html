@@ -227,7 +227,6 @@
                     <div class="component-header">
                         <div class="component-header-top">
                             <select>
-                                <option value="displayValue">Display value</option>
                                 <option value="viewWebPage">View web page</option>
                                 <option value="viewWikimedia" selected>View Wikimedia site</option>
                                 <option value="compareCoordinates">Compare coordinates</option>
@@ -268,7 +267,6 @@
                     <div class="component-header">
                         <div class="component-header-top">
                             <select>
-                                <option value="displayValue">Display value</option>
                                 <option value="viewWebPage">View web page</option>
                                 <option value="viewWikimedia">View Wikimedia site</option>
                                 <option value="compareCoordinates" selected>Compare coordinates</option>
@@ -615,26 +613,6 @@ async function populateItems(query) {
         `;
     }
 
-    function generateComponentBody(viewType) {
-        switch (viewType) {
-            case 'displayValue':
-                return '<div>Display value component content</div>';
-            case 'viewWebPage':
-                return '<iframe src="https://example.com" style="width: 100%; height: 100%; border: none;"></iframe>';
-            case 'viewWikimedia':
-                return '<iframe src="https://www.wikimedia.org" style="width: 100%; height: 100%; border: none;"></iframe>';
-            case 'compareCoordinates':
-                return '<div id="map" style="width: 100%; height: 100%;"></div>';
-            case 'compareDates':
-                return '<div>Compare dates component content</div>';
-            case 'viewAllProperties':
-                return '<div>View all properties component content</div>';
-            case 'reconciliationSettings':
-                return '<div>Reconciliation settings component content</div>';
-            default:
-                return '<div>Dummy component content</div>';
-        }
-    }
     function initializeMapInNewComponent(mapContainer) {
         if (mapContainer) {
             const newMap = L.map(mapContainer).setView([51.505, -0.09], 13);
@@ -670,8 +648,48 @@ async function populateItems(query) {
         replaceComponentContent(component, viewType);
     }
 
-    // Example usage:
-    // onComponentSelect('viewWebPage');
+        // Function to construct the project URL
+        function constructProjectUrl(qid, project, language) {
+            let projectUrl = '';
+
+            switch (project) {
+                case 'Wikidocumentaries':
+                    projectUrl = `https://wikidocumentaries-demo.wmcloud.org/${qid}?language=${language}`;
+                    break;
+                case 'Reasonator':
+                    projectUrl = `https://reasonator.toolforge.org/?q=${qid}&lang=${language}`;
+                    break;
+                default:
+                    projectUrl = '#';
+                    break;
+            }
+
+            return projectUrl;
+        }
+
+        // Function to update the URLs in the HTML
+        function updateProjectLinks(qid) {
+            const language = getSelectedLanguage();
+            const wikidocumentariesUrl = constructProjectUrl(qid, 'Wikidocumentaries', language);
+            const reasonatorUrl = constructProjectUrl(qid, 'Reasonator', language);
+
+            const wikidocumentariesLink = document.getElementById('wikidocumentariesLink');
+            const reasonatorLink = document.getElementById('reasonatorLink');
+
+            wikidocumentariesLink.innerHTML = `<h2>Wikidocumentaries</h2><a href="${wikidocumentariesUrl}" target="_blank">${wikidocumentariesUrl}</a>`;
+            reasonatorLink.innerHTML = `<h2>Reasonator</h2><a href="${reasonatorUrl}" target="_blank">${reasonatorUrl}</a>`;
+        }
+
+        // Example usage
+        const qid = 'Q42'; // Replace with the actual QID from your existing data
+
+        // Update links on page load
+        updateProjectLinks(qid);
+
+        // Update links when language is changed
+        document.getElementById('languageSelect').addEventListener('change', () => {
+            updateProjectLinks(qid);
+        });
 
     </script>
 </body>
