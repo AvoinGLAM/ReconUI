@@ -51,6 +51,20 @@
             overflow-y: auto;
             padding: 10px;
         }
+        .introduction-help {
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .introduction-help h2 {
+            margin-top: 0;
+        }
+
+        .introduction-help button {
+            margin-top: 10px;
+        }
         .item {
             display: flex;
             align-items: center;
@@ -189,10 +203,27 @@
         </div>
         <div class="content">
             <div class="left-pane" id="itemList">
+                <div class="introduction-help">
+                    <h2>Introduction</h2>
+                    <p>Welcome to the view this reconciliation interface experiment!</p>
+                    <p>The goal is to create interfaces that display Wikidata reconciliation candidates in many informative ways using more of the data available in the different sources.</p>
+                    <p>At this moment, you can search individual strings and get results based on Wikidata's Action API via SPARQL. The goal is to use multiple search methods and combine them.</p>
+                    <p>Ideally, this interface could sit on top of any data wranglig tool, read the items to be reconciled and return the reconciled items in the simplest form.</p>
+                    <button id="showHelpButton">Show Help</button>
+                    <div id="helpSection" style="display: none;">
+                        <h3>Help</h3>
+                        <p>If you need assistance, please follow the steps below:</p>
+                        <ul>
+                            <li>Use the "Submit" button to search for items.</li>
+                            <li>Navigate between items using the "Previous" and "Next" buttons.</li>
+                            <li>Click on the dropdown menus to switch views or settings.</li>
+                        </ul>
+                    </div>
+                </div>
                 <!-- Items will be populated here by JavaScript -->
             </div>
             <div class="right-pane">
-                <div class="component">
+                <div class="component" id="leftcomponent">
                     <div class="component-header">
                         <div class="component-header-top">
                             <select>
@@ -232,7 +263,7 @@
                         <iframe id="projectIframe" style="width: 100%; height: 100%; border: none;"></iframe>
                     </div>
                 </div>
-                <div class="component">
+                <div class="component" id="rightcomponent">
                     <div class="component-header">
                         <div class="component-header-top">
                             <select>
@@ -309,6 +340,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 replaceComponentContent(component, selectedView);
             }
         });
+    });
+
+    // Add event listener for help button
+    document.getElementById('showHelpButton').addEventListener('click', () => {
+        const helpSection = document.getElementById('helpSection');
+        if (helpSection.style.display === 'none') {
+            helpSection.style.display = 'block';
+            document.getElementById('showHelpButton').textContent = 'Hide Help';
+        } else {
+            helpSection.style.display = 'none';
+            document.getElementById('showHelpButton').textContent = 'Show Help';
+        }
     });
 });
 
@@ -601,6 +644,33 @@ async function populateItems(query) {
             L.featureGroup().addTo(newMap); // Add an empty feature group for markers
         }
     }
+    // Function to replace the component content and header
+    function replaceComponentContent(component, viewType) {
+        const componentBody = component.querySelector('.component-body');
+        const componentHeaderBottom = component.querySelector('.component-header-bottom');
+
+        // Replace the component body with the appropriate content
+        componentBody.innerHTML = generateComponentBody(viewType);
+
+        // Replace the component-header-bottom with the specific options for the selected viewType
+        componentHeaderBottom.innerHTML = getTemplate(`${viewType}HeaderBottom`);
+
+        // Reinitialize map if compareCoordinates is selected
+        if (viewType === 'compareCoordinates') {
+            initializeMapInNewComponent(component.querySelector('#map'));
+        }
+    }
+
+    // Sample function call for `viewWebPage` selection
+    function onComponentSelect(viewType) {
+        const component = document.querySelector('#component'); // Assume this is the container for the component
+
+        replaceComponentContent(component, viewType);
+    }
+
+    // Example usage:
+    // onComponentSelect('viewWebPage');
+
     </script>
 </body>
 </html>
