@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sheets Navigation</title>
+    <style>
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+        }
+        .content {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        button {
+            font-size: 1.2em;
+            padding: 10px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="content" class="content">Loading...</div>
+        <button id="prevButton">Previous</button>
+        <button id="nextButton">Next</button>
+    </div>
+    <script>
+        const API_KEY = 'AIzaSyASEINlaOVJvILBhGcdfdp_1ku7a2QtsB0'; // Replace with your API key
+        const SPREADSHEET_ID = '1x9svoygtVzFTA6Xy99bMXvHb0UuZj7w52y9bqVd1htc'; // Replace with your spreadsheet ID
+        const RANGE = 'Dataset!D2:D'; // Adjust range if necessary
+
+        let values = [];
+        let currentIndex = 0;
+
+        function loadSheetData() {
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${RANGE}?key=${API_KEY}`;
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    values = data.values ? data.values.map(row => row[0]) : [];
+                    currentIndex = 0;
+                    displayCurrentValue();
+                })
+                .catch(error => console.error('Error loading sheet data:', error));
+        }
+
+        function displayCurrentValue() {
+            const contentDiv = document.getElementById('content');
+            if (values.length > 0) {
+                contentDiv.textContent = values[currentIndex];
+            } else {
+                contentDiv.textContent = 'No data available';
+            }
+        }
+
+        function showNextValue() {
+            if (values.length > 0) {
+                currentIndex = (currentIndex + 1) % values.length;
+                displayCurrentValue();
+            }
+        }
+
+        function showPreviousValue() {
+            if (values.length > 0) {
+                currentIndex = (currentIndex - 1 + values.length) % values.length;
+                displayCurrentValue();
+            }
+        }
+
+        document.getElementById('nextButton').addEventListener('click', showNextValue);
+        document.getElementById('prevButton').addEventListener('click', showPreviousValue);
+
+        // Load the sheet data when the page is loaded
+        window.addEventListener('DOMContentLoaded', loadSheetData);
+    </script>
+</body>
+</html>

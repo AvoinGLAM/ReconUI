@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recon UI</title>
+    <link rel="stylesheet" href="styles/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script>
+    <script src="components/TopBar.js"></script>
+    <script src="components/SectionBar.js"></script>
+    <script src="components/ItemList.js"></script>
+    <script src="components/MapView.js"></script>
+</head>
+<body>
+    <div id="app" class="container">
+        <top-bar></top-bar>
+        <section-bar @submit-query="populateItems"></section-bar>
+        <div class="content">
+            <item-list :items="items" @select-item="selectItem"></item-list>
+            <div class="right-pane">
+                <div class="component">
+                    <div class="component-header">
+                        <div class="component-header-top">
+                            <select>
+                                <option>Select view</option>
+                                <option>Display value</option>
+                                <option>View web page</option>
+                                <option selected>View Wikimedia site</option>
+                                <option>Compare coordinates</option>
+                                <option>Compare dates</option>
+                                <option>View all properties</option>
+                                <option>Reconciliation settings</option>
+                            </select>
+                            <select>
+                                <option>View</option>
+                                <option>Maximize</option>
+                                <option>Close</option>
+                            </select>
+                        </div>
+                        <div class="component-header-bottom">
+                            <div class="row">
+                                <div class="bold-text">Project</div>
+                                <select id="projectSelect">
+                                    <option>Wikidocumentaries</option>
+                                    <option>Wikipedia</option>
+                                    <option>Wikimedia Commons</option>
+                                </select>
+                                <select id="languageSelect">
+                                    <option>English</option>
+                                    <option>Finnish</option>
+                                </select>
+                            </div>
+                            <div class="row">
+                                <a id="projectUrl" href="#" target="_blank">Simple text</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="component-body">
+                        <iframe id="projectIframe" style="width: 100%; height: 100%; border: none;" :src="iframeSrc"></iframe>
+                    </div>
+                </div>
+                <map-view ref="mapView" :items="items"></map-view>
+            </div>
+        </div>
+    </div>
+    <script>
+      new Vue({
+        el: '#app',
+        data() {
+          return {
+            items: [],
+            iframeSrc: ''
+          };
+        },
+        methods: {
+          async populateItems(query) {
+            const sparqlQuery = `
+              SELECT ?item ?itemLabel ?itemDescription (SAMPLE(?image) AS ?image) (SAMPLE(?coord) AS ?coord) WHERE {
+                SERVICE wikibase:mwapi {
+                  bd:serviceParam wikibase:endpoint "www.wikidata.org";
+                                  wikibase:api "EntitySearch";
+                                  mwapi:search "${query}";
+                                  mwapi:language "en";
+                                  mwapi:limit "8".
+                  ?item wikibase:apiOutputItem mwapi:item.
+                  ?item wikibase:apiOutputItemLabel mwapi:label.
+                }
+                OPTIONAL { ?item wdt:P18 ?image. }
+                OPTIONAL { ?item wdt:P625 ?coord. }
+                SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+              } GROUP BY ?item ?itemLabel ?itemDescription LIMIT 8`;
+            const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+            const response = await fetch(url);
+            const data = await response.json();
+            this.items = data.results.bindings;
+            this.$refs.mapView.updateMarkers(this.items);
+          },
+          selectItem(item) {
+            const qid = item.item.value.split('/').pop();
+            const url = `https://wikidocumentaries-demo.wmcloud.org/${qid}`;
+            this.iframeSrc = url;
+          }
+        }
+      });
+    </script>
+</body>
+</html>
