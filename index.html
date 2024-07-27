@@ -178,16 +178,6 @@
                 <button id="nextButton">Next</button>
             </div>
             <div>
-                <select id="addViewSelect">
-                    <option selected disabled>Add view</option>
-                    <option value="displayValue">Display value</option>
-                    <option value="viewWebPage">View web page</option>
-                    <option value="viewWikimedia">View Wikimedia site</option>
-                    <option value="compareCoordinates">Compare coordinates</option>
-                    <option value="compareDates">Compare dates</option>
-                    <option value="viewAllProperties">View all properties</option>
-                    <option value="reconciliationSettings">Reconciliation settings</option>
-                </select>
                 <button>Close</button>
             </div>
         </div>        
@@ -307,11 +297,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
             navigateItems('previous');
         }
-    });
-
-    document.getElementById('addViewSelect').addEventListener('change', (event) => {
-        const selectedView = event.target.value;
-        addNewComponent(selectedView);
     });
 
     document.querySelectorAll('.component-header-top select').forEach(select => {
