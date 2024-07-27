@@ -301,8 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('nextButton').addEventListener('click', showNextValue);
     document.getElementById('prevButton').addEventListener('click', showPreviousValue);
 
-    loadSheetData(); // Added call to load Google Sheets data
-
     document.addEventListener('keydown', (event) => {
         if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
             navigateItems('next');
@@ -329,23 +327,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-const API_KEY = 'AIzaSyASEINlaOVJvILBhGcdfdp_1ku7a2QtsB0'; // Replace with your API key
-const SPREADSHEET_ID = '1x9svoygtVzFTA6Xy99bMXvHb0UuZj7w52y9bqVd1htc'; // Replace with your spreadsheet ID
+const SPREADSHEET_ID = 'your_spreadsheet_id'; // Update with your actual spreadsheet ID
 const RANGE = 'Dataset!D2:D'; // Adjust range if necessary
 
-let values = [];
-let currentIndex = 0;
-
-function loadSheetData() {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${RANGE}?key=${API_KEY}`;
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            values = data.values ? data.values.map(row => row[0]) : [];
-            currentIndex = 0;
-            displayCurrentValue();
-        })
-        .catch(error => console.error('Error loading sheet data:', error));
+async function loadSheetData() {
+    const url = `/api/sheet-data?spreadsheetId=${SPREADSHEET_ID}&range=${RANGE}`;
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        values = data.values ? data.values.map(row => row[0]) : [];
+        currentIndex = 0;
+        displayCurrentValue();
+    } catch (error) {
+        console.error('Error loading sheet data:', error);
+    }
 }
 
 function displayCurrentValue() {
