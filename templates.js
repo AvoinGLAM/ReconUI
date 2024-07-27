@@ -82,13 +82,30 @@ function generateComponentBody(viewType) {
                 <div class="bold-text">Header row range</div>
                 <div class="rowcontent"><input type="text" id="sourceInput" placeholder="eg. 'Dataset!A1:H1'"></div>
 
-                <div class="bold-text">Key column</div>
+                <div class="bold-text">Data column</div>
                 <div class="rowcontent"><input type="text" id="sourceInput" placeholder="eg. 'Dataset!A2:A'"></div>
             </div>
             <h3>Reconciliation service</h3>
             <div class="row">
                 <select id="serviceSelect">
-                    <option>Wikidata Action API via SPARQL</option>
+                    <option>Wikidata SPARQL</option>
+                </select>
+            </div>
+            <h3>Action API text search</h3>
+            <div class="propgrid grid-3">
+                <div class="checkH">On/off</div>
+                <div class="rowcontent">Project</div>
+                <div class="rowcontent">Language</div>
+                <div class="check"><input type="checkbox" id="txtcheck-1"></div>
+                    <select id="serviceSelect">
+                        <option selected>Wikidata</option>
+                        <option>Wikipedia</option>
+                        <option>Wikimedia Commons</option>
+                    </select>
+                <select id="languageSelect">
+                    <option value="en" selected>English</option>
+                    <option value="fi">Finnish</option>
+                    <option value="sv">Swedish</option>
                 </select>
             </div>
             <h3>Search with properties</h3>
