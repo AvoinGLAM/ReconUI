@@ -205,10 +205,10 @@
             <div class="left-pane" id="itemList">
                 <div class="introduction-help">
                     <h2>Introduction</h2>
-                    <p>Welcome to the view this reconciliation interface experiment!</p>
-                    <p>The goal is to create interfaces that display Wikidata reconciliation candidates in many informative ways using more of the data available in the different sources.</p>
-                    <p>At this moment, you can search individual strings and get results based on Wikidata's Action API via SPARQL. The goal is to use multiple search methods and combine them.</p>
-                    <p>Ideally, this interface could sit on top of any data wranglig tool, read the items to be reconciled and return the reconciled items in the simplest form.</p>
+                    <p>Welcome to try this reconciliation interface experiment!</p>
+                    <p>The goal is to create a set of interfaces that display Wikidata reconciliation candidates in many informative ways using more of the data available in the different sources.</p>
+                    <p>At the moment, you can type in individual search terms and get results based on Wikidata's Action API via SPARQL. Later, perhaps, multiple search methods can be combined.</p>
+                    <p>Ideally, this interface could sit on top of any data wrangling tool, read the items to be reconciled and return the reconciled items in the simplest form.</p>
                     <button id="showHelpButton">Show Help</button>
                     <div id="helpSection" style="display: none;">
                         <h3>Help</h3>
@@ -236,7 +236,7 @@
                                 <option value="reconciliationSettings">Reconciliation settings</option>
                             </select>
                             <select>
-                                <option value="view">View</option>
+                                <option value="view" selected>View</option>
                                 <option value="maximize">Maximize</option>
                                 <option value="close">Close</option>
                             </select>
@@ -248,10 +248,11 @@
                                     <option>Wikidocumentaries</option>
                                     <option>Wikipedia</option>
                                     <option>Wikimedia Commons</option>
+                                    <option>Reasonator</option>
                                 </select>
                                 <select id="languageSelect">
-                                    <option>English</option>
-                                    <option>Finnish</option>
+                                    <option value="en" selected>English</option>
+                                    <option value="fi">Finnish</option>
                                 </select>
                             </div>
                             <div class="row">
@@ -276,7 +277,7 @@
                                 <option value="reconciliationSettings">Reconciliation settings</option>
                             </select>
                             <select>
-                                <option value="view">View</option>
+                                <option value="view" selected>View</option>
                                 <option value="maximize">Maximize</option>
                                 <option value="close">Close</option>
                             </select>
@@ -295,6 +296,7 @@
         </div>
     </div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="templates.js"></script>
     <script>
 let map;
 let markersLayer;
@@ -604,7 +606,7 @@ async function populateItems(query) {
                     </select>
                 </div>
                 <div class="component-header-bottom">
-                    <!-- Optional additional rows for project selection, etc. -->
+                    ${getTemplate(`${viewType}HeaderBottom`)}
                 </div>
             </div>
             <div class="component-body">
