@@ -162,6 +162,35 @@
         .component-body {
             flex: 1;
         }
+        .componentContent {
+            margin: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .propgrid {
+            display: grid;
+            gap: 10px;
+        }
+
+        .grid-2 {
+            grid-template-columns: auto 1fr;
+        }
+
+        .grid-3 {
+            grid-template-columns: auto 1fr 1fr;
+        }
+
+        .rowcontent {
+            flex: 1;
+        }
+
+        .checkH, .check {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
         #map {
             width: 100%;
             height: 100%;
@@ -220,20 +249,18 @@
                 <div class="itemList" id="itemList">
                     <div class="introduction-help">
                         <h2>Introduction</h2>
-                        <p>Welcome to try this reconciliation interface experiment!</p>
-                        <p>The goal is to create a set of interfaces that display Wikidata reconciliation candidates in many informative ways using more of the data available in the different sources.</p>
-                        <p>At the moment, you can type in individual search terms and get results based on Wikidata's Action API via SPARQL. Later, perhaps, multiple search methods can be combined.</p>
-                        <p>Ideally, this interface could sit on top of any data wrangling tool, read the items to be reconciled and return the reconciled items in the simplest form.</p>
-                        <button id="showHelpButton">Show Help</button>
-                        <div id="helpSection" style="display: none;">
-                            <h3>Help</h3>
-                            <p>If you need assistance, please follow the steps below:</p>
-                            <ul>
-                                <li>Use the "Submit" button to search for items.</li>
-                                <li>Navigate between items using the "Previous" and "Next" buttons.</li>
-                                <li>Click on the dropdown menus to switch views or settings.</li>
-                            </ul>
-                        </div>
+                        <p>Welcome to this Wikidata reconciliation interface experiment!</p>
+                        <p>Explore various ways to display Wikidata reconciliation candidates using rich data from different sources.</p>
+                        <p>Currently, you can enter a search term and receive results from Wikidata's Action API via SPARQL. In the future, we aim to integrate multiple search methods.</p>
+                        <p>We hope to create an interface that can integrate with any data wrangling tool, read the items to be reconciled, and return the results in a simple format.</p>
+                        <p>Give it a try and share your feedback!</p>
+                        <h3>Help</h3>
+                        <p>To start searching, follow these steps:</p>
+                        <ul>
+                            <li>Type a search term in the input box above and hit "Submit".</li>
+                            <li>Navigate between candiiates using the arrow keys.</li>
+                            <li>Click on the dropdown menus to switch views or settings.</li>
+                        </ul>
                     </div>
                 </div>
                 <div class="load-more-container">
@@ -249,13 +276,8 @@
                                 <option value="viewWikimedia" selected>View Wikimedia site</option>
                                 <option value="compareCoordinates">Compare coordinates</option>
                                 <option value="compareDates">Compare dates</option>
-                                <option value="viewAllProperties">View all properties</option>
+                                <option value="viewProperties">View properties</option>
                                 <option value="reconciliationSettings">Reconciliation settings</option>
-                            </select>
-                            <select>
-                                <option value="view" selected>View</option>
-                                <option value="maximize">Maximize</option>
-                                <option value="close">Close</option>
                             </select>
                         </div>
                         <div class="component-header-bottom">
@@ -289,13 +311,8 @@
                                 <option value="viewWikimedia">View Wikimedia site</option>
                                 <option value="compareCoordinates" selected>Compare coordinates</option>
                                 <option value="compareDates">Compare dates</option>
-                                <option value="viewAllProperties">View all properties</option>
+                                <option value="viewProperties">View properties</option>
                                 <option value="reconciliationSettings">Reconciliation settings</option>
-                            </select>
-                            <select>
-                                <option value="view" selected>View</option>
-                                <option value="maximize">Maximize</option>
-                                <option value="close">Close</option>
                             </select>
                         </div>
                         <div class="component-header-bottom">
@@ -307,7 +324,6 @@
                         <div id="map" style="width: 100%; height: 100%;"></div>
                     </div>
                 </div>
-                
             </div>
         </div>
     </div>
@@ -358,18 +374,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 replaceComponentContent(component, selectedView);
             }
         });
-    });
-
-    // Add event listener for help button
-    document.getElementById('showHelpButton').addEventListener('click', () => {
-        const helpSection = document.getElementById('helpSection');
-        if (helpSection.style.display === 'none') {
-            helpSection.style.display = 'block';
-            document.getElementById('showHelpButton').textContent = 'Hide Help';
-        } else {
-            helpSection.style.display = 'none';
-            document.getElementById('showHelpButton').textContent = 'Show Help';
-        }
     });
 });
 
@@ -590,18 +594,6 @@ async function populateItems(query, page = 0) {
             populateItems(query, currentPage + 1);
         }
     });
-    function addNewComponent(viewType) {
-        const rightPane = document.querySelector('.right-pane');
-        const newComponent = document.createElement('div');
-        newComponent.className = 'component';
-        newComponent.innerHTML = generateComponentHTML(viewType);
-        rightPane.appendChild(newComponent);
-
-        // Reinitialize map if compareCoordinates is selected
-        if (viewType === 'compareCoordinates') {
-            initializeMapInNewComponent(newComponent.querySelector('#map'));
-        }
-    }
 
     function generateComponentHTML(viewType) {
         return `
@@ -613,13 +605,8 @@ async function populateItems(query, page = 0) {
                         <option value="viewWikimedia" ${viewType === 'viewWikimedia' ? 'selected' : ''}>View Wikimedia site</option>
                         <option value="compareCoordinates" ${viewType === 'compareCoordinates' ? 'selected' : ''}>Compare coordinates</option>
                         <option value="compareDates" ${viewType === 'compareDates' ? 'selected' : ''}>Compare dates</option>
-                        <option value="viewAllProperties" ${viewType === 'viewAllProperties' ? 'selected' : ''}>View all properties</option>
+                        <option value="viewProperties" ${viewType === 'viewProperties' ? 'selected' : ''}>View properties</option>
                         <option value="reconciliationSettings" ${viewType === 'reconciliationSettings' ? 'selected' : ''}>Reconciliation settings</option>
-                    </select>
-                    <select>
-                        <option>View</option>
-                        <option>Maximize</option>
-                        <option>Close</option>
                     </select>
                 </div>
                 <div class="component-header-bottom">
