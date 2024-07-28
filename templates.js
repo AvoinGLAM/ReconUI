@@ -9,13 +9,16 @@ function getTemplate(templateName) {
                     <option>Dataset</option>
                 </select>
                 <select id="propertyselect">
+                    <option value="P2347">YSO ID (P2347)</option>
                     <option value="P10221">UNESCO ICH ID (P10221)</option>
                     <option value="P214">VIAF ID (P214)</option>
-                    <!-- Add more languages as needed -->
                 </select>
             </div>
             <div class="row">
-                <div id="webLink"></div>
+                <div id="formatterUrl">formatterUrl</div>
+            </div>
+            <div class="row">
+                <div id="webLink">formatted link</div>
             </div>
         `,
         viewWikimediaHeaderBottom: `
@@ -26,6 +29,7 @@ function getTemplate(templateName) {
                     <option>Wikipedia</option>
                     <option>Wikimedia Commons</option>
                     <option>Reasonator</option>
+                    <option>Wikivoyage</option>
                 </select>
                 <select id="languageSelect">
                     <option value="en" selected>English</option>
@@ -39,7 +43,7 @@ function getTemplate(templateName) {
         `,
         compareCoordinatesHeaderBottom: `
             <div class="row">
-                <div class="bold-text">Dataset value</div> <a id="projectUrl" href="#" target="_blank">Simple text</a>
+                <div class="bold-text">Dataset value</div> Coordinate value
             </div>
         `,
         compareDatesHeaderBottom: `
