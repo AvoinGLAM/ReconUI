@@ -268,10 +268,20 @@ async function populateItems(query, page = 0) {
                     <strong>${item.itemLabel.value}</strong><br>
                     ${item.itemDescription ? item.itemDescription.value : 'No description available'}<br>
                     <a href="https://www.wikidata.org/wiki/${qid}" target="_blank" class="popup-link">${qid}</a>
+                    <br>
+                    <button class="match-button" data-qid="${qid}">Match</button>
                 </div>
             `;
             const marker = L.marker([lat, lon]).bindPopup(popupContent);
             markers.push(marker);
+            marker.on('popupopen', () => {
+                const matchButton = document.querySelector('.match-button');
+                if (matchButton) {
+                    matchButton.addEventListener('click', () => {
+                        handleMatchButtonClick(matchButton.dataset.qid);
+                    });
+                }
+            });
         }
 
         if (index === 0) {
@@ -286,6 +296,13 @@ async function populateItems(query, page = 0) {
 
     currentPage = page; // Update the current page after loading items
 }
+
+function handleMatchButtonClick(qid) {
+    console.log('Match button clicked for QID:', qid);
+    // Add your logic here for handling the match button click
+    // For example, you could highlight the item in the item list or perform some other action
+}
+
 
 //Listener for the Load more-button
 //To do: Debug, arrange nicely in the code
