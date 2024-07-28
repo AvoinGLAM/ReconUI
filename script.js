@@ -324,7 +324,6 @@ function generateComponentHTML(viewType) {
                         <option value="viewWebPage" ${viewType === 'viewWebPage' ? 'selected' : ''}>View web page</option>
                         <option value="viewWikimedia" ${viewType === 'viewWikimedia' ? 'selected' : ''}>View Wikimedia site</option>
                         <option value="compareCoordinates" ${viewType === 'compareCoordinates' ? 'selected' : ''}>Compare coordinates</option>
-                        <option value="compareDates" ${viewType === 'compareDates' ? 'selected' : ''}>Compare dates</option>
                         <option value="viewProperties" ${viewType === 'viewProperties' ? 'selected' : ''}>View properties</option>
                         <option value="reconciliationSettings" ${viewType === 'reconciliationSettings' ? 'selected' : ''}>Reconciliation settings</option>
                     </select>

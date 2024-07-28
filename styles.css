@@ -190,6 +190,10 @@ a:hover {
     gap: 2px;
 }
 
+.bold-text {
+    font-weight: bold;
+}
+
 .propgrid {
     display: grid;
     gap: 10px;
@@ -262,7 +266,8 @@ a.popup-link:hover {
 .grid-header {
     font-weight: bold;
 }
-.grid-item {
+.grid-item select {
+    border: none;
 }
 .button-container {
     margin-top: 20px;
