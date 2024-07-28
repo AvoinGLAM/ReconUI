@@ -5,7 +5,7 @@ function getTemplate(templateName) {
         viewWebPageHeaderBottom: `
             <div class="row">
                 <select class="bold-text" id="sourceweb">
-                    <option>Wikidata property</option>
+                    <option>Authority ID</option>
                     <option>Dataset</option>
                 </select>
                 <select id="propertyselect">
@@ -15,10 +15,10 @@ function getTemplate(templateName) {
                 </select>
             </div>
             <div class="row">
-                <div id="formatterUrl">formatterUrl</div>
+                <div id="formatterUrl">display, add and edit formatter URL</div>
             </div>
             <div class="row">
-                <div id="webLink">formatted link</div>
+                <div id="webLink"><a href="#">formatted link</a></div>
             </div>
         `,
         viewWikimediaHeaderBottom: `
@@ -69,7 +69,39 @@ function generateComponentBody(viewType) {
         viewWikimedia: '<iframe id="projectIframe" style="width: 100%; height: 100%; border: none;"></iframe>',
         compareCoordinates: '<div id="map" style="width: 100%; height: 100%;"></div>',
         compareDates: '<div>Compare dates component content</div>',
-        viewProperties: '<div>View all properties component content</div>',
+        viewProperties: `
+        <div class="grid-container">
+            <div class="grid-item grid-header">Property</div>
+            <div class="grid-item grid-header">Value</div>
+            <div class="grid-item grid-header">Column</div>
+            <div class="grid-item grid-header">Value</div>
+
+            <div class="grid-item">
+                <select>
+                    <option value="property1">Property 1</option>
+                    <option value="property2">Property 2</option>
+                    <option value="property3">Property 3</option>
+                </select>
+            </div>
+            <div class="grid-item">
+                value
+            </div>
+            <div class="grid-item">
+                <select>
+                    <option value="column1">Column 1</option>
+                    <option value="column2">Column 2</option>
+                    <option value="column3">Column 3</option>
+                </select>
+            </div>
+            <div class="grid-item">
+                value
+            </div>
+        </div>
+
+        <div class="button-container">
+            <button>Add property</button>
+        </div>
+        `,
         reconciliationSettings: `
         <div class="componentContent">
             <h3>Data source</h3>
