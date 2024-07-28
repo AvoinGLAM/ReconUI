@@ -124,7 +124,7 @@ a:hover {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     background: #e0e0e0;
-    padding-left: 10px;
+    padding: 0 10px;
 }
 
 .component {
@@ -272,4 +272,17 @@ a.popup-link:hover {
 .button-container {
     margin-top: 20px;
     text-align: center;
+}
+.leaflet-popup-content {
+    margin: 10px 20px 10px 10px;
+    min-width: 230px;
+}
+.popup {
+    display: flex;
+    gap: 10px;
+}
+.popuptxt {
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
 }

@@ -263,13 +263,17 @@ async function populateItems(query, page = 0) {
             const imageUrl = item.image ? item.image.value : 'https://via.placeholder.com/100';
             const qid = item.item.value.split('/').pop();
             const popupContent = `
-                <div style="text-align: center;">
-                    <img src="${imageUrl}" alt="Image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 5px;"/><br>
-                    <strong>${item.itemLabel.value}</strong><br>
-                    ${item.itemDescription ? item.itemDescription.value : 'No description available'}<br>
-                    <a href="https://www.wikidata.org/wiki/${qid}" target="_blank" class="popup-link">${qid}</a>
-                    <br>
-                    <button class="match-button" data-qid="${qid}">Match</button>
+                <div class="popup">
+                    <img src="${imageUrl}" alt="Image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 5px;"/>
+                    <div class="popuptxt">
+                        <div>
+                            <strong>${item.itemLabel.value}</strong> <a href="https://www.wikidata.org/wiki/${qid}" target="_blank" class="popup-link">${qid}</a><br />
+                            ${item.itemDescription ? item.itemDescription.value : 'No description available'}
+                        </div>
+                        <div>
+                            <button class="match-button" data-qid="${qid}">Match</button>
+                        </div>
+                    </div>
                 </div>
             `;
             const marker = L.marker([lat, lon]).bindPopup(popupContent);
