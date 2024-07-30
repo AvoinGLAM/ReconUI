@@ -44,7 +44,74 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // Initialize the new dynamic input fields
+            initializeDynamicInputFields();
 });
+
+// Function to initialize dynamic input fields
+function initializeDynamicInputFields() {
+    const option1 = document.getElementById('option1');
+    const option2 = document.getElementById('option2');
+    const textInput = document.getElementById('textInput');
+    const dynamicUrl = document.getElementById('dynamicUrl');
+
+    const optionsMap = {
+        'a': ['P2347', 'P10221', 'P214'], // Example values for Wikidata ID property
+        'b': ['https://wikidata.org/wiki/P2347', 'https://wikidata.org/wiki/P10221', 'https://wikidata.org/wiki/P214'], // Example values for Wikidata URL property
+        'c': ['ID1', 'ID2', 'ID3'], // Example values for Dataset ID column
+        'd': ['https://dataset.org/ID1', 'https://dataset.org/ID2', 'https://dataset.org/ID3'] // Example values for Dataset URL column
+    };
+
+    option1.addEventListener('change', () => {
+        const selectedOption = option1.value;
+        populateOption2(selectedOption);
+        toggleTextInput(selectedOption);
+        updateUrl();
+    });
+
+    option2.addEventListener('change', updateUrl);
+
+    function populateOption2(selectedOption) {
+        option2.innerHTML = '';
+        const options = optionsMap[selectedOption];
+        options.forEach(value => {
+            const optionElement = document.createElement('option');
+            optionElement.value = value;
+            optionElement.textContent = value;
+            option2.appendChild(optionElement);
+        });
+    }
+
+    function toggleTextInput(selectedOption) {
+        if (selectedOption === 'a' || selectedOption === 'c') {
+            textInput.style.display = 'block';
+            textInput.value = 'https://www.yso.fi/onto/yso/p$1'; // Example formatter URL
+        } else {
+            textInput.style.display = 'none';
+        }
+    }
+
+    function updateUrl() {
+        const selectedOption = option1.value;
+        const option2Value = option2.value;
+
+        if (selectedOption === 'a' || selectedOption === 'c') {
+            const formatterUrl = textInput.value;
+            const finalUrl = formatterUrl.replace('$1', option2Value);
+            dynamicUrl.href = finalUrl;
+            dynamicUrl.textContent = finalUrl;
+        } else if (selectedOption === 'b' || selectedOption === 'd') {
+            dynamicUrl.href = option2Value;
+            dynamicUrl.textContent = option2Value;
+        }
+    }
+
+    // Initial population of the second pulldown and URL update
+    populateOption2(option1.value);
+    toggleTextInput(option1.value);
+    updateUrl();
+}
 
 //Read Google Sheets
 //To do: Use reconciliation settings to input source
