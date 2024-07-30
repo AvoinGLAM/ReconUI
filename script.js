@@ -193,26 +193,17 @@ async function fetchWikidataItems(query, page, limit) {
             PREFIX wdt: <http://www.wikidata.org/prop/direct/>
             PREFIX wd: <http://www.wikidata.org/entity/>
             PREFIX ql: <http://qlever.cs.uni-freiburg.de/builtin-functions/>
-
-            SELECT ?item ?itemLabel ?itemDescription ?img ?coord (COUNT(?text) AS ?count_text) WHERE {
-            SERVICE <https://qlever.cs.uni-freiburg.de/api/wikidata> {
-                ?text ql:contains-entity ?item .
-                ?text ql:contains-word "${query}" .
+            SELECT ?item ?itemLabel (SAMPLE(?text) AS ?itemDescription) (SAMPLE(?img) AS ?image) (SAMPLE(?coord) AS ?coords) (COUNT(?text) AS ?count_text) WHERE {
+            ?item rdfs:label ?itemLabel .
+            FILTER (LANG(?itemLabel) = "${lang}") .
+            ?text ql:contains-entity ?item .
+            ?text ql:contains-word "${query}".
+            OPTIONAL { ?item wdt:P18 ?img. }
+            OPTIONAL { ?item wdt:P625 ?coord. }
             }
-
-            # Fetch item labels and descriptions from Wikidata
-            SERVICE <https://query.wikidata.org/sparql> {
-                ?item rdfs:label ?itemLabel .
-                FILTER (LANG(?itemLabel) = "${lang}") .
-
-                OPTIONAL { ?item wdt:P18 ?img. }
-                OPTIONAL { ?item wdt:P625 ?coord. }
-                OPTIONAL { ?item schema:description ?itemDescription. FILTER (LANG(?itemDescription) = "${lang}") }
-            }
-            }
-            GROUP BY ?item ?itemLabel ?itemDescription ?img ?coord
+            GROUP BY ?item ?itemLabel
             ORDER BY DESC(?count_text) LIMIT ${limit} OFFSET ${offset}`;
-        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+        const url = `https://qlever.cs.uni-freiburg.de/api/wikidata?query=${encodeURIComponent(sparqlQuery)}`;
         const response = await fetch(url);
         // Log the raw response
         console.log('Raw response:', response);
