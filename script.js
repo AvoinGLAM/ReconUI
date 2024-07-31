@@ -1,5 +1,7 @@
 let map;
 let markersLayer;
+let lang = 'en';
+let page = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
     const mainMapContainer = document.getElementById('map');
@@ -43,6 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 replaceComponentContent(component, selectedView);
             }
         });
+    });
+
+    document.getElementById('searchLanguageSelect').addEventListener('change', function() {
+        selectedLanguage = this.value;
+        updateLanguageDisplay();
     });
 
     // Initialize the new dynamic input fields
@@ -116,9 +123,9 @@ function initializeDynamicInputFields() {
 //Read Google Sheets
 //To do: Use reconciliation settings to input source
 
-        const API_KEY = 'AIzaSyASEINlaOVJvILBhGcdfdp_1ku7a2QtsB0'; // Replace with your API key
-        const SPREADSHEET_ID = '1x9svoygtVzFTA6Xy99bMXvHb0UuZj7w52y9bqVd1htc'; // Replace with your spreadsheet ID
-        const RANGE = 'Dataset!D2:D'; // Adjust range if necessary
+const API_KEY = 'AIzaSyASEINlaOVJvILBhGcdfdp_1ku7a2QtsB0'; // Replace with your API key
+const SPREADSHEET_ID = '1x9svoygtVzFTA6Xy99bMXvHb0UuZj7w52y9bqVd1htc'; // Replace with your spreadsheet ID
+const RANGE = 'Dataset!D2:D'; // Adjust range if necessary
 
 async function loadSheetData() {
     const url = `/api/sheet-data?spreadsheetId=${SPREADSHEET_ID}&range=${RANGE}`;
@@ -181,29 +188,30 @@ function initializeMap(mapContainer) {
 //To do: Querying for more items is not working, must debug
 let currentPage = 0;
 const resultsPerPage = 20; // Number of results to fetch per page
-let lang = "en";
-let page = 0;
 let limit = resultsPerPage;
 
 async function fetchWikidataItems(query, page, limit) {
     try {
         const offset = page * limit;
         const sparqlQuery = `
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-            PREFIX wd: <http://www.wikidata.org/entity/>
-            PREFIX ql: <http://qlever.cs.uni-freiburg.de/builtin-functions/>
-            SELECT ?item ?itemLabel (SAMPLE(?text) AS ?itemDescription) (SAMPLE(?img) AS ?image) (SAMPLE(?coord) AS ?coords) (COUNT(?text) AS ?count_text) WHERE {
-            ?item rdfs:label ?itemLabel .
-            FILTER (LANG(?itemLabel) = "${lang}") .
-            ?text ql:contains-entity ?item .
-            ?text ql:contains-word "${query}".
-            OPTIONAL { ?item wdt:P18 ?img. }
-            OPTIONAL { ?item wdt:P625 ?coord. }
+        SELECT ?item ?itemLabel ?itemDescription (SAMPLE(?image) AS ?image) (SAMPLE(?coord) AS ?coord) WHERE {
+            SERVICE wikibase:mwapi {
+                bd:serviceParam wikibase:endpoint "www.wikidata.org";
+                                wikibase:api "EntitySearch";
+                                mwapi:search "${query}";
+                                mwapi:language "${lang}";
+                                mwapi:limit "${limit}";
+                                mwapi:offset "${offset}".
+                ?item wikibase:apiOutputItem mwapi:item.
+                ?item wikibase:apiOutputItemLabel mwapi:label.
             }
-            GROUP BY ?item ?itemLabel
-            ORDER BY DESC(?count_text) LIMIT ${limit} OFFSET ${offset}`;
-        const url = `https://qlever.cs.uni-freiburg.de/api/wikidata?query=${encodeURIComponent(sparqlQuery)}`;
+            OPTIONAL { ?item wdt:P18 ?image. }
+            OPTIONAL { ?item wdt:P625 ?coord. }
+            OPTIONAL { ?sitelink schema:about ?item;
+                schema:isPartOf <https://${lang}.wikipedia.org/>.}
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],${lang},mul,en". }
+        } GROUP BY ?item ?itemLabel ?itemDescription LIMIT ${limit} OFFSET ${offset}`;
+        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
         const response = await fetch(url);
         // Log the raw response
         console.log('Raw response:', response);
@@ -395,6 +403,7 @@ function generateComponentHTML(viewType) {
                         <option value="compareCoordinates" ${viewType === 'compareCoordinates' ? 'selected' : ''}>Compare coordinates</option>
                         <option value="viewProperties" ${viewType === 'viewProperties' ? 'selected' : ''}>View properties</option>
                         <option value="reconciliationSettings" ${viewType === 'reconciliationSettings' ? 'selected' : ''}>Reconciliation settings</option>
+                        <option value="mentions" ${viewType === 'mentions' ? 'selected' : ''}>Mentions in Wikipedia articles</option>
                     </select>
                 </div>
                 <div class="component-header-bottom">

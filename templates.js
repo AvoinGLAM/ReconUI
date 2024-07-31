@@ -55,8 +55,11 @@ function getTemplate(templateName) {
         reconciliationSettingsHeaderBottom: `
             <div></div>
         `,
+        mentionsHeaderBottom: `
+            <div></div>
+        `,
         defaultHeaderBottom: `
-            <div>Default options</div>
+            <div>Select Wikidata property and the corresponding column in the dataset.</div>
         `,
     };
 
@@ -76,9 +79,7 @@ function generateComponentBody(viewType) {
             <div class="grid-item grid-header">Value</div>
             <div class="grid-item">
                 <select>
-                    <option value="property1">Property 1</option>
-                    <option value="property2">Property 2</option>
-                    <option value="property3">Property 3</option>
+                    <option value="property1">Wikidata property</option>
                 </select>
             </div>
             <div class="grid-item">
@@ -86,29 +87,7 @@ function generateComponentBody(viewType) {
             </div>
             <div class="grid-item">
                 <select>
-                    <option value="column1">Column 1</option>
-                    <option value="column2">Column 2</option>
-                    <option value="column3">Column 3</option>
-                </select>
-            </div>
-            <div class="grid-item">
-                value
-            </div>
-            <div class="grid-item">
-                <select>
-                    <option value="property1">Property 1</option>
-                    <option value="property2">Property 2</option>
-                    <option value="property3">Property 3</option>
-                </select>
-            </div>
-            <div class="grid-item">
-                value
-            </div>
-            <div class="grid-item">
-                <select>
-                    <option value="column1">Column 1</option>
-                    <option value="column2">Column 2</option>
-                    <option value="column3">Column 3</option>
+                    <option value="column1">Dataset column</option>
                 </select>
             </div>
             <div class="grid-item">
@@ -137,7 +116,18 @@ function generateComponentBody(viewType) {
             <div class="rowcontent"><input type="text" id="sourceInput" placeholder="eg. 'Dataset!A1:H1'"></div>
 
             <div class="bold-text">Data column</div>
-            <div class="rowcontent"><input type="text" id="sourceInput" placeholder="eg. 'Dataset!A2:A'"></div>
+            <div class="rowcontent">
+				<select id="colSelect">
+                    <option>Select column</option>
+                </select>
+			</div>
+			
+			<div class="bold-text">ID column</div>
+            <div class="rowcontent">
+				<select id="colSelect">
+                    <option>Select column</option>
+                </select>
+			</div>
         </div>
         <h2>Search options</h2>
         <div class="propgrid grid-3">
@@ -146,23 +136,23 @@ function generateComponentBody(viewType) {
             <h3 class="rowcontent bold-text grid-span-2">SPARQL</h3>
 
             <div></div>
-            <div class="rowcontent class=" grid-span-2-2">Wikibase<br />First only Wikidata will be searched.</div>
+            <div class="rowcontent">Wikibase<br />First only Wikidata will be searched.</div>
             <select id="serviceSelect">
                 <option value="wikidata" selected>Wikidata</option>
             </select>
 
             <div></div>
-            <div class="rowcontent class=" grid-span-2-2">Endpoint<br />Wikidata SPARQL endpoint uses mwapi to make a
+            <div class="rowcontent">Endpoint<br />Wikidata SPARQL endpoint uses mwapi to make a
                 text search in Wikidata, while QLever makes a link search in Wikipedia articles.</div>
             <select id="serviceSelect">
-                <option value="wikidata" selected>Wikidata</option>
+                <option value="wikidata" selected>Wikidata Query Service</option>
                 <option value="QLever">QLever</option>
             </select>
 
             <div></div>
             <div class="rowcontent">Language</div>
-            <select id="languageSelect">
-                <option value="en" selected>English</option>
+            <select id="searchLanguageSelect">
+                <option value="en">English</option>
                 <option value="fi">Finnish</option>
                 <option value="sv">Swedish</option>
             </select>
@@ -198,6 +188,7 @@ function generateComponentBody(viewType) {
         </div>
     </div>
         `,
+        mentions: '<div>Mentions from Wikipedia articles, queried with QLever.</div>',
         default: '<div>Dummy component content</div>',
     };
 
