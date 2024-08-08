@@ -238,7 +238,7 @@ function createItemElement(item) {
         itemElement.classList.add('selected');
 
         const qid = item.item.value.split('/').pop();
-        const url = `https://wikidocumentaries-demo.wmcloud.org/${qid}`;
+        const url = `https://wikidocumentaries-demo.wmcloud.org/${qid}?language=en`;
 
         const projectUrl = document.getElementById('projectUrl');
         if (projectUrl) {

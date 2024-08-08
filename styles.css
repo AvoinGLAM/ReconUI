@@ -126,12 +126,15 @@ a:hover {
     gap: 10px;
     background: #e0e0e0;
     padding: 0 10px 10px 10px;
+    max-height: 100%;
 }
 
 .component {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: 100%;
+    overflow: auto;
 }
 
 .component-header {
@@ -183,6 +186,8 @@ a:hover {
     flex: 1;
     background: white;
     border-radius: 5px;
+    max-height: 100%;
+    overflow: auto;
 }
 
 .componentContent {
