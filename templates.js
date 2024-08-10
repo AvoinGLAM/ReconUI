@@ -182,9 +182,12 @@ function generateComponentBody(viewType) {
 
             <div class="check"><input type="radio" id="txtradio-2"></div>
             <h3 class="rowcontent grid-span-2">Reconciliation API</h3>
-            <div class="grid-span-2-2">Make an internet search limited to Wikipedias and add the QIDs of the results as
-                reconciliation candidates.</div>
-            <div class="grid-span-2-2">Example search: homme-panthères site:*.wikipedia.org</div>
+            <div></div>
+            <div class="rowcontent"><div class="bold-text">Reconciliation API</div>Reconciliation API is not yet available.</div>
+            <select id="reconSelect">
+                <option value="wikidataRecon" selected>Wikidata reconciliation service</option>
+                <option value="abbeRecon">Abbe's reconciliation service</option>
+            </select>
 
             <div class="check"><input type="radio" id="txtradio-2"></div>
             <h3 class="rowcontent grid-span-2">Search Wikipedias with Internet search engines</h3>
