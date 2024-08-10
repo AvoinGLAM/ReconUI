@@ -193,7 +193,7 @@ function generateComponentBody(viewType) {
             <div class="grid-span-2-2">Example search: homme-panthères site:*.wikipedia.org</div>
 
             <div></div>
-            <div class="rowcontent">Search engine</div>
+            <div class="rowcontent bold-text">Search engine</div>
             <select id="languageSelect">
                 <option value="duckduckgo" selected>DuckDuckGo</option>
                 <option value="google">Google</option>
