@@ -215,6 +215,10 @@ a:hover {
     grid-template-columns: auto 1fr 1fr;
 }
 
+.grid-4 {
+    grid-template-columns: auto 1fr 1fr auto;
+}
+
 .rowcontent {
     flex: 1;
 }
