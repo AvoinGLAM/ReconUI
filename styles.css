@@ -15,14 +15,12 @@ html {
 .top-bar {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    height: 50px;
+    align-items: start;
     background-color: #f0f0f0;
     padding: 0 10px;
 }
 
 .section-2 {
-    height: 50px;
     display: flex;
     align-items: center;
     padding: 0 10px;
@@ -35,10 +33,29 @@ html {
     margin-right: 10px;
 }
 
-.section-2 button {
-    height: 25px;
-    margin-right: 10px;
+button {
+    height: 30px;
+    margin: 10px 5px 10px 0;
+    padding: 0 12px;
+    border: none;
+    border-radius: 20px;
+    background-color: #fff;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.15s ease;
 }
+
+/* Hover state */
+button:hover {
+    background-color: #f0f0f0; /* Slightly darker background */
+    color: black;
+}
+
+/* Active (pressed) state */
+button:active {
+    background-color: #c5c5c5;; /* Even darker background */
+}
+
 
 .content {
     display: flex;
@@ -104,6 +121,7 @@ html {
     height: 50px;
     margin-right: 10px;
     border-radius: 5px;
+    object-fit: cover;
 }
 
 .item-details {
@@ -127,6 +145,12 @@ a:hover {
     background: #e0e0e0;
     padding: 0 10px 10px 10px;
     max-height: 100%;
+}
+
+@media (max-width: 1000px) {
+    .right-pane {
+        grid-template-columns: 1fr;
+    }
 }
 
 .component {

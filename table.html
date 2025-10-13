@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Editable Table</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.3.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jschardet/2.1.1/jschardet.min.js"></script> <!-- Ensure jschardet is loaded first -->
+    <script>
+        function loadCSV(event) {
+            const file = event.target.files[0];
+            if (file) {
+                // Detect file encoding using jschardet
+                const reader = new FileReader();
+                reader.onload = function() {
+                    const encoding = jschardet.detect(reader.result).encoding;
+                    if (encoding !== 'UTF-8') {
+                        alert(`This file is not encoded in UTF-8. Detected encoding: ${encoding}. Please upload a UTF-8 encoded CSV file.`);
+                        return;
+                    }
+                    // Proceed with parsing if encoding is UTF-8
+                    Papa.parse(file, {
+                        complete: function(results) {
+                            if (results.errors.length > 0) {
+                                alert("Error parsing CSV file. Ensure it's formatted correctly.");
+                                return;
+                            }
+                            displayTable(results.data);
+                        },
+                        encoding: "UTF-8",
+                    });
+                };
+
+                reader.readAsArrayBuffer(file); // Read the file as binary data to check encoding
+            }
+        }
+
+        function displayTable(data) {
+            const table = document.createElement("table");
+            table.border = "1";
+
+            data.forEach((row, rowIndex) => {
+                const tr = document.createElement("tr");
+                row.forEach((cell) => {
+                    const td = document.createElement(rowIndex === 0 ? "th" : "td");
+                    const input = document.createElement("input");
+                    input.type = "text";
+                    input.value = cell;
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                });
+                table.appendChild(tr);
+            });
+
+            const container = document.getElementById("table-container");
+            container.innerHTML = "";
+            container.appendChild(table);
+        }
+
+        function exportCSV() {
+            const table = document.querySelector("table");
+            const rows = Array.from(table.rows);
+            const csvData = rows.map(row =>
+                Array.from(row.cells).map(cell => cell.firstChild.value).join(",")
+            );
+
+            const csvString = csvData.join("\n");
+            const blob = new Blob([csvString], { type: "text/csv;charset=UTF-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "edited_table.csv";
+            a.click();
+        }
+    </script>
+</head>
+<body>
+    <h1>CSV Editable Table</h1>
+    <input type="file" accept=".csv" onchange="loadCSV(event)">
+    <button onclick="exportCSV()">Export CSV</button>
+    <div id="table-container"></div>
+</body>
+</html>

@@ -123,12 +123,12 @@ function initializeDynamicInputFields() {
 //Read Google Sheets
 //To do: Use reconciliation settings to input source
 
-const API_KEY = 'AIzaSyASEINlaOVJvILBhGcdfdp_1ku7a2QtsB0'; // Replace with your API key
-const SPREADSHEET_ID = '1x9svoygtVzFTA6Xy99bMXvHb0UuZj7w52y9bqVd1htc'; // Replace with your spreadsheet ID
-const RANGE = 'Dataset!D2:D'; // Adjust range if necessary
+const API_KEY = 'AIzaSyC2CAd7eAwQmNdt4ZBIdQYw-iYD_ckFlZU'; // Replace with your API key
+const SPREADSHEET_ID = '1Nm6_ntHwhbHt2_TAUieRAQ8eT9Ue_CcTggl0AgnehSo'; // Replace with your spreadsheet ID
+const RANGE = 'elements!B2:B'; // Adjust range if necessary
 
 async function loadSheetData() {
-    const url = `/api/sheet-data?spreadsheetId=${SPREADSHEET_ID}&range=${RANGE}`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${RANGE}?key=${API_KEY}`;
     try {
         const response = await fetch(url);
         const data = await response.json();
@@ -256,8 +256,8 @@ function createItemElement(item) {
     });
 
     const img = document.createElement('img');
-    img.src = item.image ? item.image.value : 'https://via.placeholder.com/50';
-    img.alt = 'QID Image';
+    img.src = item.image ? item.image.value : 'images/placeholder.png';
+    img.alt = 'Image';
 
     const details = document.createElement('div');
     details.className = 'item-details';
@@ -333,7 +333,7 @@ async function populateItems(query, page = 0) {
             const lat = parseFloat(coords[1]);
             const lon = parseFloat(coords[0]);
 
-            const imageUrl = item.image ? item.image.value : 'https://via.placeholder.com/100';
+            const imageUrl = item.image ? item.image.value : 'images/placeholder.png';
             const qid = item.item.value.split('/').pop();
             const popupContent = `
                 <div class="popup">
