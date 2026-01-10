@@ -376,8 +376,7 @@ async function populateItems(query, page = 0) {
 
 function handleMatchButtonClick(qid) {
     console.log('Match button clicked for QID:', qid);
-    // Add your logic here for handling the match button click
-    // For example, you could highlight the item in the item list or perform some other action
+    sendMatchToSheet(qid);
 }
 
 
@@ -457,4 +456,19 @@ function constructProjectUrl(qid, project, language) {
     }
 
     return projectUrl;
+}
+
+function sendMatchToSheet(qid) {
+  // Check if we are running inside a Google Apps Script frame
+  if (typeof google !== 'undefined' && google.script && google.script.host) {
+    google.script.run
+      .withSuccessHandler(() => {
+        // Close the modal automatically when matched
+        google.script.host.close();
+      })
+      .applyEntity(qid, "SINGLE_CELL", {includeLabel: true, includeDesc: true, langs: ['en']});
+  } else {
+    // Fallback for when you are testing the site standalone on GitHub
+    alert("Match found: " + qid + ". (Google Sheet connection only works inside the Modal)");
+  }
 }

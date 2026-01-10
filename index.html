@@ -116,25 +116,26 @@
     <script src="templates.js" defer></script>
     <script src="script.js" defer></script>
     <script>
-    window.onload = function() {
+  window.addEventListener('DOMContentLoaded', () => {
     // 1. Get the parameters from the URL
     const urlParams = new URLSearchParams(window.location.search);
     const searchTerm = urlParams.get('query');
 
     if (searchTerm) {
-        console.log("Searching for:", searchTerm);
-        
-        // 2. Target your existing search input and button
-        // (Ensure these IDs match your actual HTML elements)
-        const searchInput = document.getElementById('search-input'); 
-        const searchButton = document.getElementById('search-button');
+      console.log("Deep Dive for:", searchTerm);
+      
+      const inputField = document.getElementById('searchInput'); 
+      const searchButton = document.getElementById('searchButton');
 
-        if (searchInput && searchButton) {
-        searchInput.value = searchTerm;
-        searchButton.click(); // Automatically trigger the search
-        }
+      if (inputField && searchButton) {
+        // Use a slight timeout to ensure your search handlers in script.js are attached
+        setTimeout(() => {
+          inputField.value = searchTerm;
+          searchButton.click();
+        }, 300);
+      }
     }
-    };
+  });
 </script>
 </body>
 </html>
