@@ -115,5 +115,26 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="templates.js" defer></script>
     <script src="script.js" defer></script>
+    <script>
+    window.onload = function() {
+    // 1. Get the parameters from the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchTerm = urlParams.get('query');
+
+    if (searchTerm) {
+        console.log("Searching for:", searchTerm);
+        
+        // 2. Target your existing search input and button
+        // (Ensure these IDs match your actual HTML elements)
+        const searchInput = document.getElementById('search-input'); 
+        const searchButton = document.getElementById('search-button');
+
+        if (searchInput && searchButton) {
+        searchInput.value = searchTerm;
+        searchButton.click(); // Automatically trigger the search
+        }
+    }
+    };
+</script>
 </body>
 </html>
