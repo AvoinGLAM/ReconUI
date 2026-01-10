@@ -280,6 +280,13 @@ function createItemElement(item) {
 
     const button = document.createElement('button');
     button.textContent = 'Match';
+    
+    // THE FIX: Add the click event to send data back to the sheet
+    button.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevents the "item click" from firing
+        const qid = item.item.value.split('/').pop();
+        sendMatchToSheet(qid);
+    });
 
     itemElement.appendChild(img);
     itemElement.appendChild(details);
@@ -470,5 +477,32 @@ function sendMatchToSheet(qid) {
   } else {
     // Fallback for when you are testing the site standalone on GitHub
     alert("Match found: " + qid + ". (Google Sheet connection only works inside the Modal)");
+  }
+}
+
+function sendMatchToSheet(qid) {
+  // Check if we are inside the Google Sheets environment
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    
+    // You can customize these settings or pull them from a config
+    const config = {
+      includeLabel: true, 
+      includeDesc: true, 
+      langs: ['en'] 
+    };
+
+    google.script.run
+      .withSuccessHandler(() => {
+        console.log("Match applied successfully!");
+        // Optional: Close the modal automatically after matching
+        google.script.host.close();
+      })
+      .withFailureHandler((err) => {
+        alert("Error applying match: " + err);
+      })
+      .applyEntity(qid, "SINGLE_CELL", config, null); 
+  } else {
+    // This runs if you open the GitHub page directly in a browser
+    alert("Match captured: " + qid + ". (This only updates the sheet when opened from within Google Sheets)");
   }
 }
