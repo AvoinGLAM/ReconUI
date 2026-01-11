@@ -1,32 +1,32 @@
 let map;
 let markersLayer;
 let lang = 'en';
-let currentPage = 0;
-const resultsPerPage = 20;
+let currentPage = 0;           // ONLY DECLARATION
+const resultsPerPage = 20;     // ONLY DECLARATION
 let originalContext = null;
-let isSearching = false; // Flag to prevent repeated firing
+let isSearching = false;
+
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("ReconUI Loaded. Initializing...");
-
-    // 1. Setup UI elements - check if they exist first
+    // 1. Setup UI elements
     const searchButton = document.getElementById('searchButton');
     const searchInput = document.getElementById('searchInput');
     const mainMapContainer = document.getElementById('map');
+    
     if (mainMapContainer) initializeMap(mainMapContainer);
 
     if (!searchButton || !searchInput) {
         console.error("CRITICAL: searchButton or searchInput not found in HTML!");
+        return; // Stop if UI is missing
     }
 
-    // 2. Parse URL Parameters
-const urlParams = new URLSearchParams(window.location.search);
+    // 2. Parse URL Parameters (Base64 version)
+    const urlParams = new URLSearchParams(window.location.search);
     const searchTerm = urlParams.get('query');
     const ctxParam = urlParams.get('ctx');
 
     if (ctxParam) {
         try {
-            // Decode the web-safe Base64 string back to JSON
             const decoded = atob(ctxParam.replace(/-/g, '+').replace(/_/g, '/'));
             originalContext = JSON.parse(decoded);
             console.log("Context anchored successfully.");
@@ -35,35 +35,28 @@ const urlParams = new URLSearchParams(window.location.search);
         }
     }
 
-    // 3. Centralized Search Trigger
+    // 3. Define the search action
     const executeSearch = () => {
         const query = searchInput.value.trim();
-        if (query && !isSearching) { 
-            console.log("Executing search for:", query);
-            populateItems(query, 0); 
+        if (query && !isSearching) {
+            populateItems(query, 0);
         }
     };
 
-    if (searchButton) searchButton.addEventListener('click', executeSearch);
+    // 4. Attach listeners
+    searchButton.addEventListener('click', executeSearch);
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            executeSearch();
+        }
+    });
 
-    if (searchInput) {
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { 
-                e.preventDefault(); 
-                executeSearch(); 
-            }
-        });
-    }
-
-    // 4. THE ONLY AUTO-SEARCH BLOCK
-    // We use a single timeout to allow the Google API (google.script.run) 
-    // to finish injecting into the iframe before the search starts.
-    if (searchTerm && searchInput) {
-        const decodedQuery = decodeURIComponent(searchTerm);
-        searchInput.value = decodedQuery;
-        
-        console.log("Scheduling auto-search for:", decodedQuery);
-        setTimeout(executeSearch, 800); 
+    // 5. Safe Auto-Trigger
+    if (searchTerm) {
+        searchInput.value = decodeURIComponent(searchTerm);
+        // Delay helps ensure the Google Transport is stable
+        setTimeout(executeSearch, 1000); 
     }
 
     initializeDynamicInputFields();
