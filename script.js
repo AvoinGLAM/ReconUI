@@ -4,45 +4,47 @@ let lang = 'en';
 let currentPage = 0;
 const resultsPerPage = 20;
 let originalContext = null;
+let isSearching = false; // Flag to prevent repeated firing
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("ReconUI Loaded. Initializing...");
 
     // 1. Setup UI elements - check if they exist first
-    const mainMapContainer = document.getElementById('map');
-    if (mainMapContainer) initializeMap(mainMapContainer);
-
     const searchButton = document.getElementById('searchButton');
     const searchInput = document.getElementById('searchInput');
+    const mainMapContainer = document.getElementById('map');
+    if (mainMapContainer) initializeMap(mainMapContainer);
 
     if (!searchButton || !searchInput) {
         console.error("CRITICAL: searchButton or searchInput not found in HTML!");
     }
 
     // 2. Parse URL Parameters
-    const urlParams = new URLSearchParams(window.location.search);
+const urlParams = new URLSearchParams(window.location.search);
     const searchTerm = urlParams.get('query');
     const ctxParam = urlParams.get('ctx');
 
     if (ctxParam) {
         try {
-            originalContext = JSON.parse(decodeURIComponent(ctxParam));
-            console.log("Context parsed:", originalContext);
-        } catch (e) { console.error("Context error:", e); }
+            // Decode the web-safe Base64 string back to JSON
+            const decoded = atob(ctxParam.replace(/-/g, '+').replace(/_/g, '/'));
+            originalContext = JSON.parse(decoded);
+            console.log("Context anchored successfully.");
+        } catch (e) { 
+            console.error("Context parse error:", e); 
+        }
     }
 
     // 3. Centralized Search Trigger
     const executeSearch = () => {
         const query = searchInput.value.trim();
-        console.log("Executing search for:", query);
-        if (query) {
+        if (query && !isSearching) { 
+            console.log("Executing search for:", query);
             populateItems(query, 0); 
         }
     };
 
-    if (searchButton) {
-        searchButton.addEventListener('click', executeSearch);
-    }
+    if (searchButton) searchButton.addEventListener('click', executeSearch);
 
     if (searchInput) {
         searchInput.addEventListener('keydown', (e) => {
@@ -53,15 +55,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 4. Handle Auto-Search
+    // 4. THE ONLY AUTO-SEARCH BLOCK
+    // We use a single timeout to allow the Google API (google.script.run) 
+    // to finish injecting into the iframe before the search starts.
     if (searchTerm && searchInput) {
-        console.log("Auto-searching for:", searchTerm);
-        searchInput.value = decodeURIComponent(searchTerm);
-        // Execute directly and via timeout as backup
-        executeSearch();
-        setTimeout(executeSearch, 800);
+        const decodedQuery = decodeURIComponent(searchTerm);
+        searchInput.value = decodedQuery;
+        
+        console.log("Scheduling auto-search for:", decodedQuery);
+        setTimeout(executeSearch, 800); 
     }
-    
+
     initializeDynamicInputFields();
 });
 
@@ -266,9 +270,6 @@ function showPreviousValue() {
         document.getElementById('searchInput').value = values[currentIndex];
     }
 }
-
-const resultsPerPage = 20;
-let currentPage = 0;
 
 document.getElementById('loadMoreButton').addEventListener('click', () => {
     const query = document.getElementById('searchInput').value.trim();
