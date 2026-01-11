@@ -6,14 +6,20 @@ const resultsPerPage = 20;
 let originalContext = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Setup UI elements
+    console.log("ReconUI Loaded. Initializing...");
+
+    // 1. Setup UI elements - check if they exist first
     const mainMapContainer = document.getElementById('map');
-    initializeMap(mainMapContainer);
+    if (mainMapContainer) initializeMap(mainMapContainer);
 
     const searchButton = document.getElementById('searchButton');
     const searchInput = document.getElementById('searchInput');
 
-    // 2. Parse URL Parameters immediately
+    if (!searchButton || !searchInput) {
+        console.error("CRITICAL: searchButton or searchInput not found in HTML!");
+    }
+
+    // 2. Parse URL Parameters
     const urlParams = new URLSearchParams(window.location.search);
     const searchTerm = urlParams.get('query');
     const ctxParam = urlParams.get('ctx');
@@ -21,30 +27,39 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ctxParam) {
         try {
             originalContext = JSON.parse(decodeURIComponent(ctxParam));
+            console.log("Context parsed:", originalContext);
         } catch (e) { console.error("Context error:", e); }
     }
 
     // 3. Centralized Search Trigger
-    searchButton.addEventListener('click', () => {
+    const executeSearch = () => {
         const query = searchInput.value.trim();
+        console.log("Executing search for:", query);
         if (query) {
-            populateItems(query, 0); // Always start at 0
+            populateItems(query, 0); 
         }
-    });
+    };
 
-    searchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); searchButton.click(); }
-    });
+    if (searchButton) {
+        searchButton.addEventListener('click', executeSearch);
+    }
 
-    // 4. Handle Auto-Search (Wait for Google API to load)
-    if (searchTerm) {
-        searchInput.value = searchTerm;
-        // Delay ensures the iframe handshake with Google is complete
-        setTimeout(() => {
-            if (searchInput.value) {
-                populateItems(searchInput.value, 0);
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { 
+                e.preventDefault(); 
+                executeSearch(); 
             }
-        }, 500);
+        });
+    }
+
+    // 4. Handle Auto-Search
+    if (searchTerm && searchInput) {
+        console.log("Auto-searching for:", searchTerm);
+        searchInput.value = decodeURIComponent(searchTerm);
+        // Execute directly and via timeout as backup
+        executeSearch();
+        setTimeout(executeSearch, 800);
     }
     
     initializeDynamicInputFields();
