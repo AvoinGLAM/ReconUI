@@ -74,24 +74,28 @@ function sendMatchToSheet(qid) {
     const isGoogle = (typeof google !== 'undefined' && google.script && google.script.run);
     
     if (isGoogle) {
+        // Dynamically get config from your Speculo settings checkboxes
         const config = {
-            includeLabel: true,
-            includeDesc: true,
-            langs: ['en'] 
+            includeLabel: document.getElementById('checkLabel')?.checked ?? true,
+            includeDesc: document.getElementById('checkDesc')?.checked ?? true,
+            langs: ['en'] // You can expand this based on your settings button logic
         };
 
-        // UI feedback
-        const btn = event.target;
+        // UI feedback using the button that triggered the event
+        const btn = event.currentTarget; 
         const originalText = btn.textContent;
-        btn.textContent = "Saving...";
+        btn.textContent = "SAVING...";
         btn.disabled = true;
+
+        
 
         google.script.run
             .withSuccessHandler(() => {
-                // If Sidebar has this function, trigger the toast
+                // If Sidebar is open, trigger the "✓ Match Applied" toast
                 if (window.top && typeof window.top.remoteMatchNotification === 'function') {
                     window.top.remoteMatchNotification();
                 }
+                // Close the Speculo modal after successful save
                 google.script.host.close();
             })
             .withFailureHandler((err) => {
@@ -101,48 +105,44 @@ function sendMatchToSheet(qid) {
             })
             .applyEntity(qid, "SINGLE_CELL", config, originalContext);
     } else {
-        // If we get here, the Google API isn't ready or visible
         console.error("Google API not found. Context:", originalContext);
         alert("The connection to Google Sheets is not active yet. Please wait a few seconds and try again.");
     }
 }
 
 function handleMatchButtonClick(qid) {
-    console.log('Match button clicked for QID:', qid);
-    sendMatchToSheet(qid);
+    sendMatchToSheet(qid); // Calls the Google Sheets bridge we built
 }
 
 /**
  * WIKIDATA SEARCH & UI GENERATION
  */
 async function fetchWikidataItems(query, page, limit) {
-    try {
-        const offset = page * limit;
-        const sparqlQuery = `
-        SELECT ?item ?itemLabel ?itemDescription (SAMPLE(?image) AS ?image) (SAMPLE(?coord) AS ?coord) WHERE {
-            SERVICE wikibase:mwapi {
-                bd:serviceParam wikibase:endpoint "www.wikidata.org";
-                                wikibase:api "EntitySearch";
-                                mwapi:search "${query}";
-                                mwapi:language "${lang}";
-                                mwapi:limit "${limit}";
-                                mwapi:offset "${offset}".
-                ?item wikibase:apiOutputItem mwapi:item.
-                ?item wikibase:apiOutputItemLabel mwapi:label.
-            }
-            OPTIONAL { ?item wdt:P18 ?image. }
-            OPTIONAL { ?item wdt:P625 ?coord. }
-            SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],${lang},mul,en". }
-        } GROUP BY ?item ?itemLabel ?itemDescription LIMIT ${limit} OFFSET ${offset}`;
-        
-        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
-        const response = await fetch(url);
-        const data = await response.json();
-        return data.results.bindings;
-    } catch (error) {
-        console.error('Error fetching Wikidata items:', error);
-        return [];
-    }
+    const offset = page * limit;
+    const sparqlQuery = `
+    SELECT ?item ?itemLabel ?itemDescription ?coord 
+        (IF(BOUND(?img), URI(CONCAT("https://commons.wikimedia.org/wiki/Special:FilePath/", 
+        REPLACE(STR(?img), "http://commons.wikimedia.org/wiki/Special:FilePath/", ""), "?width=300")), "") AS ?thumb)
+    WHERE {
+        SERVICE wikibase:mwapi {
+            bd:serviceParam wikibase:endpoint "www.wikidata.org";
+                            wikibase:api "EntitySearch";
+                            mwapi:search "${query}";
+                            mwapi:language "${lang}";
+                            mwapi:limit "${limit}";
+                            mwapi:offset "${offset}".
+            ?item wikibase:apiOutputItem mwapi:item.
+            ?item wikibase:apiOutputItemLabel mwapi:label.
+        }
+        OPTIONAL { ?item wdt:P18 ?img. }
+        OPTIONAL { ?item wdt:P625 ?coord. }
+        SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],${lang},en". }
+    } GROUP BY ?item ?itemLabel ?itemDescription ?coord ?img LIMIT ${limit} OFFSET ${offset}`;
+    
+    const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+    const response = await fetch(url);
+    const data = await response.json();
+    return data.results.bindings;
 }
 
 function createItemElement(item) {
@@ -169,15 +169,11 @@ function createItemElement(item) {
     });
 
     const img = document.createElement('img');
-    let imageUrl = item.image ? item.image.value : 'images/placeholder.png';
-
-    // Force HTTPS for Wikimedia Commons images
-    if (imageUrl.startsWith('http://')) {
-        imageUrl = imageUrl.replace('http://', 'https://');
-    }
-
-    img.src = imageUrl;
-    img.alt = 'Image';
+    
+    // Use the 'thumb' variable from the new SPARQL query
+    // It already includes the width=300 parameter and HTTPS
+    img.src = (item.thumb && item.thumb.value) ? item.thumb.value : 'images/placeholder.png';
+    img.alt = 'Thumbnail';
 
     const details = document.createElement('div');
     details.className = 'item-details';
@@ -216,29 +212,62 @@ function createItemElement(item) {
 async function populateItems(query, page = 0) {
     const itemList = document.getElementById('itemList');
     
-    // Crucial: Clear existing content to prevent "Double Population"
+    // 1. Reset UI for new searches
     if (page === 0) {
-        itemList.innerHTML = '<div style="padding:20px;">Searching Wikidata...</div>';
+        itemList.innerHTML = ''; 
         if (markersLayer) markersLayer.clearLayers();
     }
 
+    // 2. Fetch data from SPARQL
     const items = await fetchWikidataItems(query, page, resultsPerPage);
-    
-    // Clear "Searching..." before appending
-    if (page === 0) itemList.innerHTML = '';
-
-    if (items.length === 0 && page === 0) {
-        itemList.innerHTML = '<div style="padding:20px;">No results found.</div>';
-        return;
-    }
 
     items.forEach((item, index) => {
+        // 3. Populate the Left-Pane List
         const itemElement = createItemElement(item);
         itemList.appendChild(itemElement);
-        // ... marker logic ...
+
+        // 4. Populate the Map (Right-Pane)
+        if (item.coord && markersLayer) {
+            // Parse "Point(lon lat)" format
+            const coords = item.coord.value.replace('Point(', '').replace(')', '').split(' ');
+            const lat = parseFloat(coords[1]);
+            const lon = parseFloat(coords[0]);
+            
+            const qid = item.item.value.split('/').pop();
+            
+            // Extract display values with fallbacks
+            // Consistently use 'item.thumb' to match your updated SPARQL SELECT ?thumb
+            const label = item.itemLabel ? item.itemLabel.value : 'No label';
+            const desc = item.itemDescription ? item.itemDescription.value : 'No description available';
+
+            // Safety check: if item.thumb exists, use its value; otherwise, use the placeholder
+            const imgUrl = (item.thumb && item.thumb.value) ? item.thumb.value : 'images/placeholder.png';
+
+            const popupContent = `
+                <div class="popup">
+                    <img src="${imgUrl}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 5px;"/>
+                    <div>
+                        <strong>${label}</strong>
+                        <a href="https://www.wikidata.org/wiki/${qid}" target="_blank" class="popup-link">${qid}</a><br />
+                        <div>${desc}</div>
+                        <button class="match-button blue" onclick="sendMatchToSheet('${qid}')">Match</button>
+                    </div>
+                </div>`;
+            
+            const marker = L.marker([lat, lon]).bindPopup(popupContent);
+            markersLayer.addLayer(marker);
+        }
+
+        // 5. Auto-select the first result to trigger the preview iframe
+        if (index === 0 && page === 0) {
+            itemElement.click();
+        }
     });
-    
-    currentPage = page;
+
+    // 6. Adjust Map View to fit all markers
+    if (markersLayer.getLayers().length > 0) {
+        map.fitBounds(markersLayer.getBounds(), { padding: [50, 50] });
+    }
 }
 
 /**

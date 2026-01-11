@@ -3,7 +3,7 @@ html {
     margin: 0;
     padding: 0;
     height: 100%;
-    font-family: Arial, sans-serif;
+    font-family: Helvetica Neue, Arial, sans-serif;
 }
 
 #pageDisplay {
@@ -83,8 +83,8 @@ html {
     transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
-.search-submit-btn:hover {
-    background-color: #1593db;
+.search-submit-btn:hover, .blue {
+    background-color: #1EACFC;
     color: white;
 }
 
@@ -106,14 +106,14 @@ button {
 }
 
 /* Hover state */
-button:hover {
-    background-color: #f0f0f0; /* Slightly darker background */
-    color: black;
+button:hover, .grey {
+    background-color: #1EACFC;
+    color: white;
 }
 
 /* Active (pressed) state */
 button:active {
-    background-color: #c5c5c5;; /* Even darker background */
+    background-color: #178ed3;; /* Even darker background */
 }
 
 .content {
