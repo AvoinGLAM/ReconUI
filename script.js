@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchButton = document.getElementById('searchButton');
     const searchInput = document.getElementById('searchInput');
     const mainMapContainer = document.getElementById('map');
+    document.getElementById('settingsButton').onclick = () => {
+    alert("Settings:\nLanguage: English\nEngine: WDQS + mwapi\nResults per page: 20");
+    };
     
     if (mainMapContainer) initializeMap(mainMapContainer);
 
@@ -22,16 +25,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. Parse URL Parameters (Base64 version)
     const urlParams = new URLSearchParams(window.location.search);
-    const searchTerm = urlParams.get('query');
     const ctxParam = urlParams.get('ctx');
+    const searchTerm = urlParams.get('query');
 
     if (ctxParam) {
         try {
+            // Correctly decode Base64 back to a JSON string, then to an object
             const decoded = atob(ctxParam.replace(/-/g, '+').replace(/_/g, '/'));
             originalContext = JSON.parse(decoded);
-            console.log("Context anchored successfully.");
-        } catch (e) { 
-            console.error("Context parse error:", e); 
+            console.log("Context decoded successfully");
+        } catch (e) {
+            console.error("Context decoding failed:", e);
         }
     }
 
@@ -66,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
  * RECONCILIATION BRIDGE
  */
 function sendMatchToSheet(qid) {
-    // Check if we are truly inside Google Sheets
+    // Look for the Google object
     const isGoogle = (typeof google !== 'undefined' && google.script && google.script.run);
     
     if (isGoogle) {
@@ -76,22 +80,30 @@ function sendMatchToSheet(qid) {
             langs: ['en'] 
         };
 
-        // UI feedback: Disable the button so the user knows it's working
-        console.log("Sending to Apps Script:", qid, originalContext);
-        
+        // UI feedback
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = "Saving...";
+        btn.disabled = true;
+
         google.script.run
             .withSuccessHandler(() => {
-                // If you have the sidebar status message function:
-                if (window.top && window.top.remoteMatchNotification) {
+                // If Sidebar has this function, trigger the toast
+                if (window.top && typeof window.top.remoteMatchNotification === 'function') {
                     window.top.remoteMatchNotification();
                 }
                 google.script.host.close();
             })
-            .withFailureHandler((err) => alert("Google Script Error: " + err))
+            .withFailureHandler((err) => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+                alert("Apps Script Error: " + err);
+            })
             .applyEntity(qid, "SINGLE_CELL", config, originalContext);
     } else {
-        // This only fires if testing the URL in a standard browser tab
-        alert("MODE: Standalone\nQID: " + qid + "\nRow: " + (originalContext ? originalContext.row : "Unknown"));
+        // If we get here, the Google API isn't ready or visible
+        console.error("Google API not found. Context:", originalContext);
+        alert("The connection to Google Sheets is not active yet. Please wait a few seconds and try again.");
     }
 }
 

@@ -6,6 +6,13 @@ html {
     font-family: Arial, sans-serif;
 }
 
+#pageDisplay {
+    background: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin: 0 5px;
+}
+
 .container {
     display: flex;
     flex-direction: column;
@@ -21,11 +28,9 @@ html {
 }
 
 .section-2 {
-    display: flex;
-    align-items: center;
     padding: 0 10px;
-    background-color: #e0e0e0;
-    justify-content: space-between;
+    /* This ensures everything stays in one line even if window is narrow */
+    flex-wrap: nowrap; 
 }
 
 .section-2 input {
@@ -56,6 +61,11 @@ button:active {
     background-color: #c5c5c5;; /* Even darker background */
 }
 
+/* Optional: make the icon buttons a bit narrower than standard buttons */
+#prevButton, #nextButton, #settingsButton {
+    padding: 0 8px;
+    font-weight: bold;
+}
 
 .content {
     display: flex;
