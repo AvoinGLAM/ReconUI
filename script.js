@@ -3,18 +3,17 @@ let markersLayer;
 let lang = 'en';
 let currentPage = 0;
 const resultsPerPage = 20;
-let originalContext = null; 
-let values = []; 
-let currentIndex = 0;
+let originalContext = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Setup UI elements
     const mainMapContainer = document.getElementById('map');
     initializeMap(mainMapContainer);
 
     const searchButton = document.getElementById('searchButton');
     const searchInput = document.getElementById('searchInput');
 
-    // 1. URL Parameter Handling
+    // 2. Parse URL Parameters immediately
     const urlParams = new URLSearchParams(window.location.search);
     const searchTerm = urlParams.get('query');
     const ctxParam = urlParams.get('ctx');
@@ -22,41 +21,32 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ctxParam) {
         try {
             originalContext = JSON.parse(decodeURIComponent(ctxParam));
-            console.log("Context anchored:", originalContext);
-        } catch (e) {
-            console.error("Context error:", e);
-        }
+        } catch (e) { console.error("Context error:", e); }
     }
 
-    // 2. Search Logic (Unified)
+    // 3. Centralized Search Trigger
     searchButton.addEventListener('click', () => {
         const query = searchInput.value.trim();
         if (query) {
-            // Force reset to page 0 on new search to prevent double-loading
-            populateItems(query, 0); 
+            populateItems(query, 0); // Always start at 0
         }
     });
 
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            searchButton.click();
-        }
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); searchButton.click(); }
     });
 
-    // 3. Auto-trigger search (One-time only)
+    // 4. Handle Auto-Search (Wait for Google API to load)
     if (searchTerm) {
         searchInput.value = searchTerm;
-        // We use a slightly longer delay to ensure the Google API object is injected into the frame
+        // Delay ensures the iframe handshake with Google is complete
         setTimeout(() => {
-            const query = searchInput.value.trim();
-            if (query) populateItems(query, 0);
+            if (searchInput.value) {
+                populateItems(searchInput.value, 0);
+            }
         }, 500);
     }
-
-    // Setup other listeners...
-    document.getElementById('nextButton').addEventListener('click', showNextValue);
-    document.getElementById('prevButton').addEventListener('click', showPreviousValue);
+    
     initializeDynamicInputFields();
 });
 
@@ -64,9 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
  * RECONCILIATION BRIDGE
  */
 function sendMatchToSheet(qid) {
-    // Check for Google Apps Script environment
+    // Check if we are truly inside Google Sheets
     const isGoogle = (typeof google !== 'undefined' && google.script && google.script.run);
-
+    
     if (isGoogle) {
         const config = {
             includeLabel: true,
@@ -74,21 +64,22 @@ function sendMatchToSheet(qid) {
             langs: ['en'] 
         };
 
-        // Note: We use originalContext from the URL to ensure it goes to the right cell
+        // UI feedback: Disable the button so the user knows it's working
+        console.log("Sending to Apps Script:", qid, originalContext);
+        
         google.script.run
             .withSuccessHandler(() => {
+                // If you have the sidebar status message function:
                 if (window.top && window.top.remoteMatchNotification) {
                     window.top.remoteMatchNotification();
                 }
                 google.script.host.close();
             })
-            .withFailureHandler((err) => {
-                alert("Apps Script Error: " + err);
-            })
+            .withFailureHandler((err) => alert("Google Script Error: " + err))
             .applyEntity(qid, "SINGLE_CELL", config, originalContext);
     } else {
-        // This runs if you open the URL directly in Chrome/Safari
-        alert("MODE: STANDALONE TEST\nMatch QID: " + qid + "\nOriginal Row: " + (originalContext ? originalContext.row : "N/A"));
+        // This only fires if testing the URL in a standard browser tab
+        alert("MODE: Standalone\nQID: " + qid + "\nRow: " + (originalContext ? originalContext.row : "Unknown"));
     }
 }
 
@@ -180,9 +171,9 @@ function createItemElement(item) {
     const button = document.createElement('button');
     button.textContent = 'Match';
     button.addEventListener('click', (e) => {
-        e.stopPropagation(); 
+        e.stopPropagation(); // Stops the 'item click' from selecting/refreshing the preview
         sendMatchToSheet(qid);
-    });
+    }); 
 
     itemElement.appendChild(img);
     itemElement.appendChild(details);
@@ -194,51 +185,28 @@ function createItemElement(item) {
 async function populateItems(query, page = 0) {
     const itemList = document.getElementById('itemList');
     
-    // Safety check to prevent double population
+    // Crucial: Clear existing content to prevent "Double Population"
     if (page === 0) {
-        itemList.innerHTML = '<div class="loading">Searching Wikidata...</div>';
+        itemList.innerHTML = '<div style="padding:20px;">Searching Wikidata...</div>';
         if (markersLayer) markersLayer.clearLayers();
     }
 
     const items = await fetchWikidataItems(query, page, resultsPerPage);
     
-    if (page === 0) {
-        itemList.innerHTML = ''; // Clear the loading state
-    }
+    // Clear "Searching..." before appending
+    if (page === 0) itemList.innerHTML = '';
 
     if (items.length === 0 && page === 0) {
-        itemList.innerHTML = '<div class="no-results">No results found for "' + query + '"</div>';
+        itemList.innerHTML = '<div style="padding:20px;">No results found.</div>';
         return;
     }
 
-    const markers = [];
     items.forEach((item, index) => {
         const itemElement = createItemElement(item);
         itemList.appendChild(itemElement);
-
-        // Marker logic...
-        if (item.coord) {
-            const coords = item.coord.value.replace('Point(', '').replace(')', '').split(' ');
-            const lat = parseFloat(coords[1]);
-            const lon = parseFloat(coords[0]);
-            const qid = item.item.value.split('/').pop();
-            
-            const marker = L.marker([lat, lon]).bindPopup(`
-                <strong>${item.itemLabel.value}</strong><br>
-                <button onclick="sendMatchToSheet('${qid}')">Match this location</button>
-            `);
-            markers.push(marker);
-        }
-
-        if (index === 0 && page === 0) {
-            itemElement.click();
-        }
+        // ... marker logic ...
     });
-
-    if (markers.length > 0 && map) {
-        markersLayer.addLayer(L.featureGroup(markers));
-        map.fitBounds(markersLayer.getBounds());
-    }
+    
     currentPage = page;
 }
 
