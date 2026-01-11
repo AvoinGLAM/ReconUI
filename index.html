@@ -9,20 +9,16 @@
 </head>
 <body>
     <div class="container">
-        <div class="top-bar" style="height: 5px; min-height: 5px;"></div>
-
         <div class="section-2">
-            <div style="display: flex; align-items: center;">
+            <div>
                 <input type="search" id="searchInput" placeholder="Search...">
-                <button id="searchButton" class="bold-text">Search</button>
+                <button id="searchButton">Search</button>
+                <button id="newItemButton">New item</button>
+                <button id="prevButton" title="Previous">Previous</button>
+                <button id="nextButton" title="Next">Next</button>
             </div>
-
-            <div style="display: flex; align-items: center; gap: 5px;">
-                <button id="prevButton" title="Previous">←</button>
-                <span id="pageDisplay" style="font-size: 0.9em; font-weight: bold;">1</span>
-                <button id="nextButton" title="Next">→</button>
-                
-                <button id="settingsButton" title="Settings">⚙️</button>
+            <div>
+                <button id="settingsButton" title="Settings">Settings</button>
             </div>
         </div>
         

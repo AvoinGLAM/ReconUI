@@ -28,9 +28,12 @@ html {
 }
 
 .section-2 {
+    display: flex;
+    align-items: center;
     padding: 0 10px;
-    /* This ensures everything stays in one line even if window is narrow */
     flex-wrap: nowrap; 
+    background-color: #e0e0e0;
+    justify-content: space-between;
 }
 
 .section-2 input {
