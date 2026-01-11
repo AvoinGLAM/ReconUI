@@ -1,17 +1,20 @@
 let map;
 let markersLayer;
 let lang = 'en';
-let page = 0;
-let originalContext = null; // Global variable to store Google Sheet coordinates
-let values = []; // To store stepper values if needed
+let currentPage = 0;
+const resultsPerPage = 20;
+let originalContext = null; 
+let values = []; 
 let currentIndex = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Initialize Map
     const mainMapContainer = document.getElementById('map');
     initializeMap(mainMapContainer);
 
-    // 2. Handle URL Parameters from Google Sheets (The Authoritative Search)
+    const searchButton = document.getElementById('searchButton');
+    const searchInput = document.getElementById('searchInput');
+
+    // 1. URL Parameter Handling
     const urlParams = new URLSearchParams(window.location.search);
     const searchTerm = urlParams.get('query');
     const ctxParam = urlParams.get('ctx');
@@ -19,19 +22,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ctxParam) {
         try {
             originalContext = JSON.parse(decodeURIComponent(ctxParam));
+            console.log("Context anchored:", originalContext);
         } catch (e) {
-            console.error("Error parsing context:", e);
+            console.error("Context error:", e);
         }
     }
 
-    // 3. Setup Search Elements
-    const searchButton = document.getElementById('searchButton');
-    const searchInput = document.getElementById('searchInput');
-
+    // 2. Search Logic (Unified)
     searchButton.addEventListener('click', () => {
         const query = searchInput.value.trim();
         if (query) {
-            populateItems(query);
+            // Force reset to page 0 on new search to prevent double-loading
+            populateItems(query, 0); 
         }
     });
 
@@ -42,72 +44,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 4. Auto-trigger search if query is passed from Sidebar
+    // 3. Auto-trigger search (One-time only)
     if (searchTerm) {
         searchInput.value = searchTerm;
-        // Small delay to ensure all listeners are ready
-        setTimeout(() => searchButton.click(), 300);
+        // We use a slightly longer delay to ensure the Google API object is injected into the frame
+        setTimeout(() => {
+            const query = searchInput.value.trim();
+            if (query) populateItems(query, 0);
+        }, 500);
     }
 
-    // 5. Navigation & UI Listeners
+    // Setup other listeners...
     document.getElementById('nextButton').addEventListener('click', showNextValue);
     document.getElementById('prevButton').addEventListener('click', showPreviousValue);
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-            navigateItems('next');
-        } else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-            navigateItems('previous');
-        }
-    });
-
-    document.querySelectorAll('.component-header-top select').forEach(select => {
-        select.addEventListener('change', (event) => {
-            const selectedView = event.target.value;
-            const component = event.target.closest('.component');
-            if (selectedView === 'Close') {
-                component.remove();
-            } else {
-                replaceComponentContent(component, selectedView);
-            }
-        });
-    });
-
-    // Note: ensure 'searchLanguageSelect' exists in HTML or this will error
-    const langSelect = document.getElementById('searchLanguageSelect');
-    if (langSelect) {
-        langSelect.addEventListener('change', function() {
-            lang = this.value;
-            // updateLanguageDisplay(); // Call if function exists
-        });
-    }
-
     initializeDynamicInputFields();
 });
 
 /**
  * RECONCILIATION BRIDGE
- * Sends selected QID back to Google Sheets
  */
 function sendMatchToSheet(qid) {
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
+    // Check for Google Apps Script environment
+    const isGoogle = (typeof google !== 'undefined' && google.script && google.script.run);
+
+    if (isGoogle) {
         const config = {
             includeLabel: true,
             includeDesc: true,
-            langs: [document.getElementById('languageSelect')?.value || 'en']
+            langs: ['en'] 
         };
 
+        // Note: We use originalContext from the URL to ensure it goes to the right cell
         google.script.run
             .withSuccessHandler(() => {
-                console.log("Match applied successfully to sheet.");
-                google.script.host.close(); // Close modal and return to sheet
+                if (window.top && window.top.remoteMatchNotification) {
+                    window.top.remoteMatchNotification();
+                }
+                google.script.host.close();
             })
             .withFailureHandler((err) => {
-                alert("Error applying match: " + err);
+                alert("Apps Script Error: " + err);
             })
             .applyEntity(qid, "SINGLE_CELL", config, originalContext);
     } else {
-        alert("Local Test Match: " + qid + "\n(Spreadsheet would be updated if running in Google Sheets)");
+        // This runs if you open the URL directly in Chrome/Safari
+        alert("MODE: STANDALONE TEST\nMatch QID: " + qid + "\nOriginal Row: " + (originalContext ? originalContext.row : "N/A"));
     }
 }
 
@@ -212,49 +193,41 @@ function createItemElement(item) {
 
 async function populateItems(query, page = 0) {
     const itemList = document.getElementById('itemList');
+    
+    // Safety check to prevent double population
     if (page === 0) {
-        itemList.innerHTML = '';
+        itemList.innerHTML = '<div class="loading">Searching Wikidata...</div>';
         if (markersLayer) markersLayer.clearLayers();
     }
 
     const items = await fetchWikidataItems(query, page, resultsPerPage);
-    const markers = [];
+    
+    if (page === 0) {
+        itemList.innerHTML = ''; // Clear the loading state
+    }
 
+    if (items.length === 0 && page === 0) {
+        itemList.innerHTML = '<div class="no-results">No results found for "' + query + '"</div>';
+        return;
+    }
+
+    const markers = [];
     items.forEach((item, index) => {
         const itemElement = createItemElement(item);
         itemList.appendChild(itemElement);
 
+        // Marker logic...
         if (item.coord) {
             const coords = item.coord.value.replace('Point(', '').replace(')', '').split(' ');
             const lat = parseFloat(coords[1]);
             const lon = parseFloat(coords[0]);
-
-            const imageUrl = item.image ? item.image.value : 'images/placeholder.png';
             const qid = item.item.value.split('/').pop();
-            const popupContent = `
-                <div class="popup">
-                    <img src="${imageUrl}" alt="Image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 5px;"/>
-                    <div class="popuptxt">
-                        <div>
-                            <strong>${item.itemLabel.value}</strong><br />
-                            ${item.itemDescription ? item.itemDescription.value : 'No description'}
-                        </div>
-                        <div>
-                            <button class="match-button" data-qid="${qid}">Match</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            const marker = L.marker([lat, lon]).bindPopup(popupContent);
+            
+            const marker = L.marker([lat, lon]).bindPopup(`
+                <strong>${item.itemLabel.value}</strong><br>
+                <button onclick="sendMatchToSheet('${qid}')">Match this location</button>
+            `);
             markers.push(marker);
-            marker.on('popupopen', () => {
-                const matchButton = document.querySelector('.match-button');
-                if (matchButton) {
-                    matchButton.addEventListener('click', () => {
-                        sendMatchToSheet(matchButton.dataset.qid);
-                    });
-                }
-            });
         }
 
         if (index === 0 && page === 0) {
@@ -266,7 +239,6 @@ async function populateItems(query, page = 0) {
         markersLayer.addLayer(L.featureGroup(markers));
         map.fitBounds(markersLayer.getBounds());
     }
-
     currentPage = page;
 }
 
