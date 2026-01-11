@@ -10,12 +10,14 @@
 <body>
     <div class="container">
         <div class="section-2">
-            <div>
-                <input type="search" id="searchInput" placeholder="Search...">
-                <button id="searchButton">Search</button>
+            <div id="controls" class="controls">
+                <button id="prevButton" title="Previous">❮</button>
+                <button id="nextButton" title="Next">❯</button>
+                <div class="search-wrapper">
+                    <input type="search" id="searchInput" placeholder="Search...">
+                    <button id="searchButton" class="search-submit-btn">Search</button>
+                </div>
                 <button id="newItemButton">New item</button>
-                <button id="prevButton" title="Previous">Previous</button>
-                <button id="nextButton" title="Next">Next</button>
             </div>
             <div>
                 <button id="settingsButton" title="Settings">Settings</button>

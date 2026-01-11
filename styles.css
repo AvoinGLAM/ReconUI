@@ -36,9 +36,61 @@ html {
     justify-content: space-between;
 }
 
-.section-2 input {
-    height: 25px;
-    margin-right: 10px;
+.controls {
+    display: flex;
+}
+
+.search-wrapper {
+    height: 30px;
+    margin: 10px 5px 10px 0;
+    padding: 0 4px 0 12px;
+    border: none;
+    border-radius: 20px;
+    background-color: #f1f1f1;
+    color: #333;
+    cursor: text;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    width: 250px;
+}
+
+.search-wrapper:focus-within {
+    background-color: #ffffff;
+}
+
+#searchInput {
+    border: none;
+    background: none;
+    outline: none;
+    width: 100%;
+}
+
+/* The nested submit button */
+.search-submit-btn {
+    height: 22px; /* Slightly smaller to sit inside */
+    margin: 0;
+    padding: 0 10px;
+    font-size: 0.8em;
+    background-color: #1EACFC; /* Use your blue theme color */
+    color: white;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.search-submit-btn:hover {
+    background-color: #1593db;
+    color: white;
+}
+
+.search-wrapper:focus-within .search-submit-btn {
+    opacity: 1;
+    visibility: visible;
 }
 
 button {
@@ -62,12 +114,6 @@ button:hover {
 /* Active (pressed) state */
 button:active {
     background-color: #c5c5c5;; /* Even darker background */
-}
-
-/* Optional: make the icon buttons a bit narrower than standard buttons */
-#prevButton, #nextButton, #settingsButton {
-    padding: 0 8px;
-    font-weight: bold;
 }
 
 .content {
@@ -101,7 +147,7 @@ button:active {
 
 .introduction-help {
     padding: 20px;
-    background-color: #f9f9f9;
+    background-color: #f1f1f1;
     border: 1px solid #ddd;
     border-radius: 5px;
 }
@@ -180,7 +226,7 @@ a:hover {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    background: #f9f9f9;
+    background: #f1f1f1;
     border-radius: 5px;
 }
 
