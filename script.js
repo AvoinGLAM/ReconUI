@@ -157,7 +157,14 @@ function createItemElement(item) {
     });
 
     const img = document.createElement('img');
-    img.src = item.image ? item.image.value : 'images/placeholder.png';
+    let imageUrl = item.image ? item.image.value : 'images/placeholder.png';
+
+    // Force HTTPS for Wikimedia Commons images
+    if (imageUrl.startsWith('http://')) {
+        imageUrl = imageUrl.replace('http://', 'https://');
+    }
+
+    img.src = imageUrl;
     img.alt = 'Image';
 
     const details = document.createElement('div');
