@@ -88,11 +88,6 @@ html {
     color: white;
 }
 
-.blue:hover {
-    background-color: #178ed3;
-    color: white;
-}
-
 .search-wrapper:focus-within .search-submit-btn {
     opacity: 1;
     visibility: visible;
