@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. Define the search action
     const executeSearch = () => {
         const query = searchInput.value.trim();
+        // Only proceed if not already in the middle of a search
         if (query && !isSearching) {
             populateItems(query, 0);
         }
@@ -209,66 +210,13 @@ function createItemElement(item) {
     return itemElement;
 }
 
-async function populateItems(query, page = 0) {
-    const itemList = document.getElementById('itemList');
-    
-    // 1. Reset UI for new searches
-    if (page === 0) {
-        itemList.innerHTML = ''; 
-        if (markersLayer) markersLayer.clearLayers();
+const executeSearch = () => {
+    const query = searchInput.value.trim();
+    // Only proceed if not already in the middle of a search
+    if (query && !isSearching) {
+        populateItems(query, 0);
     }
-
-    // 2. Fetch data from SPARQL
-    const items = await fetchWikidataItems(query, page, resultsPerPage);
-
-    items.forEach((item, index) => {
-        // 3. Populate the Left-Pane List
-        const itemElement = createItemElement(item);
-        itemList.appendChild(itemElement);
-
-        // 4. Populate the Map (Right-Pane)
-        if (item.coord && markersLayer) {
-            // Parse "Point(lon lat)" format
-            const coords = item.coord.value.replace('Point(', '').replace(')', '').split(' ');
-            const lat = parseFloat(coords[1]);
-            const lon = parseFloat(coords[0]);
-            
-            const qid = item.item.value.split('/').pop();
-            
-            // Extract display values with fallbacks
-            // Consistently use 'item.thumb' to match your updated SPARQL SELECT ?thumb
-            const label = item.itemLabel ? item.itemLabel.value : 'No label';
-            const desc = item.itemDescription ? item.itemDescription.value : 'No description available';
-
-            // Safety check: if item.thumb exists, use its value; otherwise, use the placeholder
-            const imgUrl = (item.thumb && item.thumb.value) ? item.thumb.value : 'images/placeholder.png';
-
-            const popupContent = `
-                <div class="popup">
-                    <img src="${imgUrl}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 5px;"/>
-                    <div>
-                        <strong>${label}</strong>
-                        <a href="https://www.wikidata.org/wiki/${qid}" target="_blank" class="popup-link">${qid}</a><br />
-                        <div>${desc}</div>
-                        <button class="match-button blue" onclick="sendMatchToSheet('${qid}')">Match</button>
-                    </div>
-                </div>`;
-            
-            const marker = L.marker([lat, lon]).bindPopup(popupContent);
-            markersLayer.addLayer(marker);
-        }
-
-        // 5. Auto-select the first result to trigger the preview iframe
-        if (index === 0 && page === 0) {
-            itemElement.click();
-        }
-    });
-
-    // 6. Adjust Map View to fit all markers
-    if (markersLayer.getLayers().length > 0) {
-        map.fitBounds(markersLayer.getBounds(), { padding: [50, 50] });
-    }
-}
+};
 
 /**
  * UTILITY & UI FUNCTIONS
@@ -314,7 +262,10 @@ function showPreviousValue() {
 
 document.getElementById('loadMoreButton').addEventListener('click', () => {
     const query = document.getElementById('searchInput').value.trim();
-    if (query) populateItems(query, currentPage + 1);
+    if (query && !isSearching) {
+        // Use the global currentPage which we just synced in populateItems
+        populateItems(query, currentPage + 1);
+    }
 });
 
 // Dynamic Input Field Logic (Kept as per your original)
