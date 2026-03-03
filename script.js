@@ -245,6 +245,28 @@ async function updateSitelinksForCurrentResults(items) {
     console.log("Sitelinks cache:", itemSitelinks);
 }
 
+// ===== CONSTANTS FOR URL BUILDING =====
+const PROJECT_MAP = {
+    'Wikipedia': 'wikipedia',
+    'Wikisource': 'wikisource',
+    'Wikivoyage': 'wikivoyage',
+    'Wikibooks': 'wikibooks'
+};
+
+const MULTILINGUAL_PROJECTS = {
+    'Wikimedia Commons': 'commons',
+    'Metawiki': 'meta'
+};
+
+const PROJECT_DOMAINS = {
+    'wikipedia': 'wikipedia.org',
+    'wikisource': 'wikisource.org',
+    'wikivoyage': 'wikivoyage.org',
+    'wikibooks': 'wikibooks.org',
+    'commons': 'commons.wikimedia.org',
+    'meta': 'meta.wikimedia.org'
+};
+
 /**
  * GET AVAILABLE PROJECTS FOR AN ITEM
  * Only returns the 4 supported projects in the specified order.
@@ -255,23 +277,19 @@ function getAvailableProjects(qid) {
     const sitelinks = itemSitelinks[qid];
     const projects = [];
 
-    if (sitelinks['wikipedia']) projects.push('Wikipedia');
-    if (sitelinks['wikisource']) projects.push('Wikisource');
-    if (sitelinks['wikimedia'] && sitelinks['wikimedia'].some(e => e.lang === 'commons')) {
-        projects.push('Wikimedia Commons');
-    }
-    if (sitelinks['wikimedia'] && sitelinks['wikimedia'].some(e => e.lang === 'meta')) {
-        projects.push('Metawiki');
-    }
+    Object.entries(PROJECT_MAP).forEach(([projectName, projectKey]) => {
+        if (sitelinks[projectKey]) {
+            projects.push(projectName);
+        }
+    });
+
+    Object.entries(MULTILINGUAL_PROJECTS).forEach(([projectName, langKey]) => {
+        if (sitelinks['wikimedia']?.some(e => e.lang === langKey)) {
+            projects.push(projectName);
+        }
+    });
 
     return projects;
-}
-
-/**
- * DETERMINE IF A PROJECT IS LOCALIZED (has per-language versions)
- */
-function isLocalizedProject(projectType) {
-    return projectType === 'Wikipedia' || projectType === 'Wikisource';
 }
 
 /**
@@ -279,15 +297,10 @@ function isLocalizedProject(projectType) {
  * Only applicable for localized projects (Wikipedia, Wikisource).
  */
 function getAvailableLanguages(qid, projectType) {
-    const projectMap = {
-        'Wikipedia': 'wikipedia',
-        'Wikisource': 'wikisource',
-    };
-    const normalizedProject = projectMap[projectType];
+    const normalizedProject = PROJECT_MAP[projectType];
+    
+    if (!normalizedProject || !itemSitelinks[qid]?.[normalizedProject]) return [];
 
-    if (!normalizedProject || !itemSitelinks[qid] || !itemSitelinks[qid][normalizedProject]) return [];
-
-    // Return array of language codes
     return itemSitelinks[qid][normalizedProject].map(entry => ({
         code: entry.lang,
         title: entry.title
@@ -295,28 +308,45 @@ function getAvailableLanguages(qid, projectType) {
 }
 
 /**
+ * BUILD WIKIMEDIA URL WITH PROPER STRUCTURE
+ * Constructs formatted URL with &mobileaction=toggle_view_mobile
+ */
+function buildWikimediaUrl(projectKey, langCode, title) {
+    const domain = PROJECT_DOMAINS[projectKey];
+    if (!domain) return null;
+    
+    const baseUrl = (projectKey === 'commons' || projectKey === 'meta') 
+        ? `https://${domain}/w/index.php?title=${encodeURIComponent(title)}&mobileaction=toggle_view_mobile`
+        : `https://${langCode}.${domain}/w/index.php?title=${encodeURIComponent(title)}&mobileaction=toggle_view_mobile`;
+    
+    return baseUrl;
+}
+
+/**
  * GET URL FOR SPECIFIC ITEM, PROJECT, AND LANGUAGE
+ * Now returns FORMATTED URL, not raw sitelink
  */
 function getWikimediaUrl(qid, projectType, langCode) {
     if (!itemSitelinks[qid]) return null;
 
-    // Localized projects (Wikipedia, Wikisource) — look up by lang code
-    if (isLocalizedProject(projectType)) {
-        const projectMap = {
-            'Wikipedia': 'wikipedia',
-            'Wikisource': 'wikisource',
-        };
-        const normalizedProject = projectMap[projectType];
-        if (!itemSitelinks[qid][normalizedProject]) return null;
-        const entry = itemSitelinks[qid][normalizedProject].find(e => e.lang === langCode);
-        return entry ? entry.url : null;
+    const normalizedProject = PROJECT_MAP[projectType];
+    
+    // Localized projects
+    if (normalizedProject) {
+        const sitelinks = itemSitelinks[qid][normalizedProject];
+        const entry = sitelinks?.find(e => e.lang === langCode);
+        if (!entry) return null;
+        return buildWikimediaUrl(normalizedProject, langCode, entry.title);
     }
 
-    // Multilingual projects (Wikimedia Commons, Metawiki) — lang code is fixed
-    if (!itemSitelinks[qid]['wikimedia']) return null;
-    const langKey = projectType === 'Wikimedia Commons' ? 'commons' : 'meta';
-    const entry = itemSitelinks[qid]['wikimedia'].find(e => e.lang === langKey);
-    return entry ? entry.url : null;
+    // Multilingual projects
+    const langKey = MULTILINGUAL_PROJECTS[projectType];
+    if (!langKey) return null;
+    
+    const sitelinks = itemSitelinks[qid]['wikimedia'];
+    const entry = sitelinks?.find(e => e.lang === langKey);
+    if (!entry) return null;
+    return buildWikimediaUrl(langKey, langCode, entry.title);
 }
 
 function createItemElement(item) {
