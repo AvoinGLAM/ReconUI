@@ -247,39 +247,46 @@ async function updateSitelinksForCurrentResults(items) {
 
 /**
  * GET AVAILABLE PROJECTS FOR AN ITEM
+ * Only returns the 4 supported projects in the specified order.
  */
 function getAvailableProjects(qid) {
     if (!itemSitelinks[qid]) return [];
-    
-    // Return list of projects available for this item
-    return Object.keys(itemSitelinks[qid]).map(project => {
-        const humanNames = {
-            'wikipedia': 'Wikipedia',
-            'wikiquote': 'Wikiquote',
-            'wikivoyage': 'Wikivoyage',
-            'wikibooks': 'Wikibooks',
-            'commons': 'Wikimedia Commons'
-        };
-        return humanNames[project] || project;
-    });
+
+    const sitelinks = itemSitelinks[qid];
+    const projects = [];
+
+    if (sitelinks['wikipedia']) projects.push('Wikipedia');
+    if (sitelinks['wikisource']) projects.push('Wikisource');
+    if (sitelinks['wikimedia'] && sitelinks['wikimedia'].some(e => e.lang === 'commons')) {
+        projects.push('Wikimedia Commons');
+    }
+    if (sitelinks['wikimedia'] && sitelinks['wikimedia'].some(e => e.lang === 'meta')) {
+        projects.push('Metawiki');
+    }
+
+    return projects;
+}
+
+/**
+ * DETERMINE IF A PROJECT IS LOCALIZED (has per-language versions)
+ */
+function isLocalizedProject(projectType) {
+    return projectType === 'Wikipedia' || projectType === 'Wikisource';
 }
 
 /**
  * GET AVAILABLE LANGUAGES FOR AN ITEM AND PROJECT
+ * Only applicable for localized projects (Wikipedia, Wikisource).
  */
 function getAvailableLanguages(qid, projectType) {
-    // Normalize project type (human name to code)
     const projectMap = {
         'Wikipedia': 'wikipedia',
-        'Wikiquote': 'wikiquote',
-        'Wikivoyage': 'wikivoyage',
-        'Wikibooks': 'wikibooks',
-        'Wikimedia Commons': 'commons'
+        'Wikisource': 'wikisource',
     };
-    const normalizedProject = projectMap[projectType] || projectType;
-    
-    if (!itemSitelinks[qid] || !itemSitelinks[qid][normalizedProject]) return [];
-    
+    const normalizedProject = projectMap[projectType];
+
+    if (!normalizedProject || !itemSitelinks[qid] || !itemSitelinks[qid][normalizedProject]) return [];
+
     // Return array of language codes
     return itemSitelinks[qid][normalizedProject].map(entry => ({
         code: entry.lang,
@@ -291,19 +298,24 @@ function getAvailableLanguages(qid, projectType) {
  * GET URL FOR SPECIFIC ITEM, PROJECT, AND LANGUAGE
  */
 function getWikimediaUrl(qid, projectType, langCode) {
-    // Normalize project type
-    const projectMap = {
-        'Wikipedia': 'wikipedia',
-        'Wikiquote': 'wikiquote',
-        'Wikivoyage': 'wikivoyage',
-        'Wikibooks': 'wikibooks',
-        'Wikimedia Commons': 'commons'
-    };
-    const normalizedProject = projectMap[projectType] || projectType;
-    
-    if (!itemSitelinks[qid] || !itemSitelinks[qid][normalizedProject]) return null;
-    
-    const entry = itemSitelinks[qid][normalizedProject].find(e => e.lang === langCode);
+    if (!itemSitelinks[qid]) return null;
+
+    // Localized projects (Wikipedia, Wikisource) — look up by lang code
+    if (isLocalizedProject(projectType)) {
+        const projectMap = {
+            'Wikipedia': 'wikipedia',
+            'Wikisource': 'wikisource',
+        };
+        const normalizedProject = projectMap[projectType];
+        if (!itemSitelinks[qid][normalizedProject]) return null;
+        const entry = itemSitelinks[qid][normalizedProject].find(e => e.lang === langCode);
+        return entry ? entry.url : null;
+    }
+
+    // Multilingual projects (Wikimedia Commons, Metawiki) — lang code is fixed
+    if (!itemSitelinks[qid]['wikimedia']) return null;
+    const langKey = projectType === 'Wikimedia Commons' ? 'commons' : 'meta';
+    const entry = itemSitelinks[qid]['wikimedia'].find(e => e.lang === langKey);
     return entry ? entry.url : null;
 }
 
@@ -396,17 +408,27 @@ function updateProjectDropdown(qid) {
 
 /**
  * UPDATE LANGUAGE DROPDOWN
- * Populate with available languages for the selected item and project
+ * Populate with available languages for the selected item and project.
+ * Hides the dropdown for multilingual projects (Wikimedia Commons, Metawiki).
  */
 function updateLanguageDropdown(qid, projectType) {
     const languageSelect = document.getElementById('languageSelect');
     if (!languageSelect) return;
-    
+
+    // Hide language dropdown for multilingual projects
+    if (!isLocalizedProject(projectType)) {
+        languageSelect.style.display = 'none';
+        updateWikimediaDisplay(qid, projectType, null);
+        return;
+    }
+
+    languageSelect.style.display = '';
+
     const availableLanguages = getAvailableLanguages(qid, projectType);
-    
+
     // Clear current options
     languageSelect.innerHTML = '';
-    
+
     // Add available languages
     availableLanguages.forEach(lang => {
         const option = document.createElement('option');
@@ -414,12 +436,12 @@ function updateLanguageDropdown(qid, projectType) {
         option.textContent = `${lang.code} - ${lang.title}`;
         languageSelect.appendChild(option);
     });
-    
+
     // Remove old listener and add new one
     languageSelect.onchange = () => {
         updateWikimediaDisplay(qid, projectType, languageSelect.value);
     };
-    
+
     // Trigger display update for first language
     if (availableLanguages.length > 0) {
         updateWikimediaDisplay(qid, projectType, languageSelect.value);
