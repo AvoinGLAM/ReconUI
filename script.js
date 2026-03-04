@@ -363,15 +363,15 @@ function getAvailableLanguages(qid, projectType) {
 
 /**
  * BUILD WIKIMEDIA URL WITH PROPER STRUCTURE
- * Constructs formatted URL with &?useformat=mobile&useskin=vector-2022
+ * Constructs canonical URL in the format https://[lang].[domain]/wiki/[title]
  */
 function buildWikimediaUrl(projectKey, langCode, title) {
     const domain = PROJECT_DOMAINS[projectKey];
     if (!domain) return null;
     
     const baseUrl = (projectKey === 'commons' || projectKey === 'meta') 
-        ? `https://${domain}/w/index.php?title=${encodeURIComponent(title)}&?useformat=mobile&useskin=vector-2022`
-        : `https://${langCode}.${domain}/w/index.php?title=${encodeURIComponent(title)}&?useformat=mobile&useskin=vector-2022`;
+        ? `https://${domain}/wiki/${encodeURIComponent(title)}`
+        : `https://${langCode}.${domain}/wiki/${encodeURIComponent(title)}`;
     
     return baseUrl;
 }
@@ -622,7 +622,7 @@ function updateLanguageDropdown(qid, projectType) {
 
 /**
  * UPDATE WIKIMEDIA DISPLAY
- * Load the selected Wikimedia page into the iframe with mobile view
+ * Load the selected Wikimedia page into the iframe using srcdoc with nested iframe wrapper
  */
 function updateWikimediaDisplay(qid, projectType, langCode) {
     const url = getWikimediaUrl(qid, projectType, langCode);
@@ -636,10 +636,9 @@ function updateWikimediaDisplay(qid, projectType, langCode) {
 
         const iframe = document.getElementById('projectIframe');
         if (iframe) {
-            // IMPORTANT: Clear srcdoc first so src will work
-            iframe.srcdoc = '';
-            // Now load the actual page
-            iframe.src = url;
+            // Use srcdoc with nested iframe wrapper for reliable content rendering
+            const escapedUrl = url.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            iframe.srcdoc = `<html><body style="margin:0;padding:0;height:100%;"><iframe src="${escapedUrl}" style="width:100%;height:100%;border:none;"></iframe></body></html>`;
         }
     } else {
         console.warn(`No URL found for QID ${qid}, project ${projectType}, language ${langCode}`);
