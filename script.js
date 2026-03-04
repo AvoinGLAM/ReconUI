@@ -441,25 +441,28 @@ function updateProjectDropdown(qid) {
  * Populate with available languages for the selected item and project.
  * Hides the dropdown for multilingual projects (Wikimedia Commons, Metawiki).
  */
+/**
+ * UPDATE LANGUAGE DROPDOWN
+ * Populate with available languages for the selected item and project.
+ * For multilingual projects, directly update display without language selection.
+ */
 function updateLanguageDropdown(qid, projectType) {
     const languageSelect = document.getElementById('languageSelect');
     if (!languageSelect) return;
 
-    // Hide language dropdown for multilingual projects
-    if (!isLocalizedProject(projectType)) {
+    const availableLanguages = getAvailableLanguages(qid, projectType);
+
+    // For multilingual projects (no languages)
+    if (availableLanguages.length === 0) {
         languageSelect.style.display = 'none';
-        updateWikimediaDisplay(qid, projectType, null);
+        updateWikimediaDisplay(qid, projectType);
         return;
     }
 
+    // For localized projects (show language dropdown)
     languageSelect.style.display = '';
-
-    const availableLanguages = getAvailableLanguages(qid, projectType);
-
-    // Clear current options
     languageSelect.innerHTML = '';
 
-    // Add available languages
     availableLanguages.forEach(lang => {
         const option = document.createElement('option');
         option.value = lang.code;
@@ -467,14 +470,13 @@ function updateLanguageDropdown(qid, projectType) {
         languageSelect.appendChild(option);
     });
 
-    // Remove old listener and add new one
     languageSelect.onchange = () => {
         updateWikimediaDisplay(qid, projectType, languageSelect.value);
     };
 
     // Trigger display update for first language
     if (availableLanguages.length > 0) {
-        updateWikimediaDisplay(qid, projectType, languageSelect.value);
+        updateWikimediaDisplay(qid, projectType, availableLanguages[0].code);
     }
 }
 
