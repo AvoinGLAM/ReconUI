@@ -465,11 +465,48 @@ function createItemElement(item) {
     return itemElement;
 }
 
-/**
- * UPDATE PROJECT DROPDOWN
- * Populate with available projects for the selected item
- * Hide all controls if no projects available
- */
+function initializePlaceholder() {
+    const iframe = document.getElementById('projectIframe');
+    const projectSelect = document.getElementById('projectSelect');
+    const languageSelect = document.getElementById('languageSelect');
+    const projectUrl = document.getElementById('projectUrl');
+    
+    if (!iframe) return;
+    
+    // Hide dropdowns and link by default
+    projectSelect.style.display = 'none';
+    languageSelect.style.display = 'none';
+    projectUrl.style.display = 'none';
+    
+    // Show placeholder
+    iframe.srcdoc = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                * { margin: 0; padding: 0; }
+                body {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 100vh;
+                    background-color: #f5f5f5;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    color: #ccc;
+                }
+                .message {
+                    text-align: center;
+                    font-size: 16px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="message">Select an item to view Wikimedia content</div>
+        </body>
+        </html>
+    `;
+}
+
 function updateProjectDropdown(qid) {
     const projectSelect = document.getElementById('projectSelect');
     const languageSelect = document.getElementById('languageSelect');
@@ -480,26 +517,39 @@ function updateProjectDropdown(qid) {
     
     const availableProjects = getAvailableProjects(qid);
     
-    // If no projects available, show message and hide controls
+    // If no projects available, show placeholder
     if (availableProjects.length === 0) {
         projectSelect.style.display = 'none';
         languageSelect.style.display = 'none';
         projectUrl.style.display = 'none';
-        iframe.src = '';  // Clear iframe
-        iframe.srcdoc = '';  // Clear any srcdoc content
         
-        // Create or update message
-        let messageEl = document.getElementById('noSitelinksMessage');
-        if (!messageEl) {
-            messageEl = document.createElement('div');
-            messageEl.id = 'noSitelinksMessage';
-            messageEl.style.padding = '10px';
-            messageEl.style.color = '#666';
-            messageEl.style.fontStyle = 'italic';
-            projectSelect.parentElement.appendChild(messageEl);
-        }
-        messageEl.textContent = 'No Wikimedia articles found for this item';
-        messageEl.style.display = '';
+        // Show placeholder in iframe
+        iframe.srcdoc = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    * { margin: 0; padding: 0; }
+                    body {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        background-color: #f5f5f5;
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                        color: #999;
+                    }
+                    .message {
+                        text-align: center;
+                        font-size: 16px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="message">No Wikimedia articles found for this item</div>
+            </body>
+            </html>
+        `;
         return;
     }
     
@@ -507,12 +557,6 @@ function updateProjectDropdown(qid) {
     projectSelect.style.display = '';
     languageSelect.style.display = '';
     projectUrl.style.display = '';
-    
-    // Hide message if it exists
-    const messageEl = document.getElementById('noSitelinksMessage');
-    if (messageEl) {
-        messageEl.style.display = 'none';
-    }
     
     // Clear current options
     projectSelect.innerHTML = '';
@@ -578,7 +622,7 @@ function updateLanguageDropdown(qid, projectType) {
 
 /**
  * UPDATE WIKIMEDIA DISPLAY
- * Load the selected Wikimedia page into the iframe
+ * Load the selected Wikimedia page into the iframe with mobile view
  */
 function updateWikimediaDisplay(qid, projectType, langCode) {
     const url = getWikimediaUrl(qid, projectType, langCode);
@@ -592,6 +636,9 @@ function updateWikimediaDisplay(qid, projectType, langCode) {
 
         const iframe = document.getElementById('projectIframe');
         if (iframe) {
+            // IMPORTANT: Clear srcdoc first so src will work
+            iframe.srcdoc = '';
+            // Now load the actual page
             iframe.src = url;
         }
     } else {
