@@ -392,3 +392,11 @@ a.popup-link:hover {
     gap: 10px;
     flex-direction: column;
 }
+#noSitelinksMessage {
+    background-color: #f0f0f0;
+    border-left: 4px solid #ccc;
+    padding: 12px;
+    border-radius: 4px;
+    margin: 10px 0;
+    color: #666;
+}

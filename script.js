@@ -158,35 +158,55 @@ async function fetchWikidataItems(query, page, limit) {
  * SITELINKS BATCH QUERY
  * Fetches all sitelinks for a batch of Wikidata items
  */
+/**
+ * SITELINKS BATCH QUERY
+ * Fetches all sitelinks for a batch of Wikidata items
+ * Batches requests into groups of 10 to avoid Wikidata limits
+ */
 async function fetchSitelinksForItems(qids) {
     if (!qids || qids.length === 0) return [];
 
-    // Build VALUES clause for SPARQL
-    const values = qids.map(qid => `wd:${qid}`).join(' ');
-    
-    const sparqlQuery = `
-    SELECT ?item ?sitelink ?wiki ?title WHERE {
-        VALUES ?item { ${values} }
+    const batchSize = 10;
+    const allResults = [];
+
+    console.log('Total QIDs to fetch:', qids.length);
+
+    // Process QIDs in batches of 10
+    for (let i = 0; i < qids.length; i += batchSize) {
+        const batch = qids.slice(i, i + batchSize);
+        console.log(`Batch ${Math.floor(i / batchSize) + 1} QIDs:`, batch);
         
-        ?sitelink schema:about ?item ;
-                  schema:isPartOf ?wiki ;
-                  schema:name ?title .
+        const values = batch.map(qid => `wd:${qid}`).join(' ');
         
-        FILTER(STRSTARTS(STR(?wiki), "https://"))
+        const sparqlQuery = `
+        SELECT ?item ?sitelink ?wiki ?title WHERE {
+            VALUES ?item { ${values} }
+            
+            ?sitelink schema:about ?item ;
+                      schema:isPartOf ?wiki ;
+                      schema:name ?title .
+            
+            FILTER(STRSTARTS(STR(?wiki), "https://"))
+        }
+        ORDER BY ?item ?wiki`;
+        
+        try {
+            const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            const batchResults = data.results.bindings;
+            console.log(`Batch ${Math.floor(i / batchSize) + 1}: ${batchResults.length} results`);
+            console.log(`Batch ${Math.floor(i / batchSize) + 1} QIDs with results:`, [...new Set(batchResults.map(r => r.item.value.split('/').pop()))]);
+            
+            allResults.push(...batchResults);
+        } catch (error) {
+            console.error("Error fetching sitelinks batch:", error);
+        }
     }
-    ORDER BY ?item ?wiki`;
-    
-    try {
-        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
-        const response = await fetch(url);
-        const data = await response.json();
-        
-        console.log("Sitelinks fetched:", data.results.bindings.length, "results");
-        return data.results.bindings;
-    } catch (error) {
-        console.error("Error fetching sitelinks:", error);
-        return [];
-    }
+
+    console.log("Total sitelinks fetched:", allResults.length);
+    return allResults;
 }
 
 /**
@@ -422,12 +442,48 @@ function createItemElement(item) {
 /**
  * UPDATE PROJECT DROPDOWN
  * Populate with available projects for the selected item
+ * Hide all controls if no projects available
  */
 function updateProjectDropdown(qid) {
     const projectSelect = document.getElementById('projectSelect');
-    if (!projectSelect) return;
+    const languageSelect = document.getElementById('languageSelect');
+    const projectUrl = document.getElementById('projectUrl');
+    
+    if (!projectSelect || !languageSelect || !projectUrl) return;
     
     const availableProjects = getAvailableProjects(qid);
+    
+    // If no projects available, show message and hide controls
+    if (availableProjects.length === 0) {
+        projectSelect.style.display = 'none';
+        languageSelect.style.display = 'none';
+        projectUrl.style.display = 'none';
+        
+        // Create or update message
+        let messageEl = document.getElementById('noSitelinksMessage');
+        if (!messageEl) {
+            messageEl = document.createElement('div');
+            messageEl.id = 'noSitelinksMessage';
+            messageEl.style.padding = '10px';
+            messageEl.style.color = '#666';
+            messageEl.style.fontStyle = 'italic';
+            projectSelect.parentElement.appendChild(messageEl);
+        }
+        messageEl.textContent = 'No Wikimedia articles found for this item';
+        messageEl.style.display = '';
+        return;
+    }
+    
+    // Show controls if projects available
+    projectSelect.style.display = '';
+    languageSelect.style.display = '';
+    projectUrl.style.display = '';
+    
+    // Hide message if it exists
+    const messageEl = document.getElementById('noSitelinksMessage');
+    if (messageEl) {
+        messageEl.style.display = 'none';
+    }
     
     // Clear current options
     projectSelect.innerHTML = '';
@@ -521,9 +577,10 @@ function updateWikimediaDisplay(qid, projectType, langCode) {
 async function populateItems(query, page = 0) {
     const itemList = document.getElementById('itemList');
     
-    // 1. Reset UI for new searches
+    // 1. Reset UI only for NEW searches (page 0)
     if (page === 0) {
         itemList.innerHTML = ''; 
+        currentPage = 0;  // Reset page counter
         if (markersLayer) markersLayer.clearLayers();
     }
 
@@ -548,11 +605,9 @@ async function populateItems(query, page = 0) {
             const qid = item.item.value.split('/').pop();
             
             // Extract display values with fallbacks
-            // Consistently use 'item.thumb' to match your updated SPARQL SELECT ?thumb
             const label = item.itemLabel ? item.itemLabel.value : 'No label';
             const desc = item.itemDescription ? item.itemDescription.value : 'No description available';
 
-            // Safety check: if item.thumb exists, use its value; otherwise, use the placeholder
             const imgUrl = (item.thumb && item.thumb.value) ? item.thumb.value : 'images/placeholder.png';
 
             const popupContent = `
@@ -570,7 +625,7 @@ async function populateItems(query, page = 0) {
             markersLayer.addLayer(marker);
         }
 
-        // 6. Auto-select the first result to trigger the preview iframe
+        // 6. Auto-select the first result ONLY on first page
         if (index === 0 && page === 0) {
             itemElement.click();
         }
@@ -629,7 +684,10 @@ function showPreviousValue() {
 
 document.getElementById('loadMoreButton').addEventListener('click', () => {
     const query = document.getElementById('searchInput').value.trim();
-    if (query) populateItems(query, currentPage + 1);
+    if (query) {
+        currentPage++;  // Increment BEFORE calling populateItems
+        populateItems(query, currentPage);
+    }
 });
 
 // Dynamic Input Field Logic (Kept as per your original)
