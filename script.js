@@ -6,6 +6,9 @@ const resultsPerPage = 20;     // ONLY DECLARATION
 let originalContext = null;
 let isSearching = false;
 let itemSitelinks = {};  // Cache: { qid: { projectType: [{ lang, title, url }, ...] } }
+let itemAuthorityIds = {};  // Cache: { qid: [{ propertyId, propertyLabel, value, url }] }
+let currentDisplayedQids = [];       // QIDs currently shown in the result list
+let fetchedAuthorityIdsForQids = new Set();  // QIDs whose authority IDs have already been fetched
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -244,6 +247,48 @@ async function fetchSitelinksForItems(qids) {
 }
 
 /**
+ * AUTHORITY IDS BATCH QUERY
+ * Fetches external identifier values and their formatter URLs (P1630) for a batch of items.
+ * Only external ID properties that have a P1630 formatter URL are included — properties
+ * without one cannot produce a displayable URL and are excluded.
+ * Batches requests into groups of 10 to avoid Wikidata limits.
+ */
+async function fetchAuthorityIdsForItems(qids) {
+    if (!qids || qids.length === 0) return [];
+
+    const batchSize = 10;
+    const allResults = [];
+
+    for (let i = 0; i < qids.length; i += batchSize) {
+        const batch = qids.slice(i, i + batchSize);
+        const values = batch.map(qid => `wd:${qid}`).join(' ');
+
+        const sparqlQuery = `
+        SELECT ?item ?property ?propertyLabel ?value (SAMPLE(?fmtUrl) AS ?formatterUrl) WHERE {
+            VALUES ?item { ${values} }
+            ?item ?p ?value .
+            ?property wikibase:directClaim ?p ;
+                      wikibase:propertyType wikibase:ExternalId ;
+                      wdt:P1630 ?fmtUrl .
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "${lang}". }
+        }
+        GROUP BY ?item ?property ?propertyLabel ?value
+        ORDER BY ?item ?property`;
+
+        try {
+            const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+            const response = await fetch(url);
+            const data = await response.json();
+            allResults.push(...data.results.bindings);
+        } catch (error) {
+            console.error("Error fetching authority IDs batch:", error);
+        }
+    }
+
+    return allResults;
+}
+
+/**
  * PROCESS SITELINKS RESULTS
  * Takes raw sitelinks results and caches them organized by item
  */
@@ -305,6 +350,48 @@ async function updateSitelinksForCurrentResults(items) {
     
     console.log("Sitelinks cached for QIDs:", qids);
     console.log("Sitelinks cache:", itemSitelinks);
+}
+
+/**
+ * PROCESS AUTHORITY IDS RESULTS
+ * Takes raw SPARQL results and caches authority IDs per item,
+ * constructing the target URL from the formatter URL (P1630).
+ */
+function processAuthorityIdsResults(results) {
+    const cache = {};
+
+    results.forEach(result => {
+        const qid = result.item.value.split('/').pop();
+
+        if (!cache[qid]) cache[qid] = [];
+
+        const propertyId = result.property.value.split('/').pop();
+        const propertyLabel = result.propertyLabel?.value || propertyId;
+        const value = result.value.value;
+        const formatterUrl = result.formatterUrl?.value;
+
+        if (formatterUrl) {
+            const url = formatterUrl.replace(/\$1/g, value);
+            cache[qid].push({ propertyId, propertyLabel, value, url });
+        }
+    });
+
+    return cache;
+}
+
+/**
+ * FETCH AND CACHE AUTHORITY IDS FOR A LIST OF QIDS
+ * Skips QIDs that have already been fetched (checked against fetchedAuthorityIdsForQids).
+ */
+async function updateAuthorityIdsForQids(qids) {
+    const unfetched = qids.filter(qid => !fetchedAuthorityIdsForQids.has(qid));
+    if (unfetched.length === 0) return;
+
+    const results = await fetchAuthorityIdsForItems(unfetched);
+    const newCache = processAuthorityIdsResults(results);
+    itemAuthorityIds = { ...itemAuthorityIds, ...newCache };
+    unfetched.forEach(qid => fetchedAuthorityIdsForQids.add(qid));
+    console.log("Authority IDs cached for QIDs:", unfetched);
 }
 
 // ===== CONSTANTS FOR URL BUILDING =====
@@ -410,21 +497,90 @@ function updateWikidocumentariesDisplay(qid, langCode) {
 }
 
 /**
- * HANDLE VIEW TYPE CHANGE
- * Switch between Wikimedia and Wikidocumentaries views
+ * UPDATE AUTHORITY DROPDOWN
+ * Populate the authority source selector with available external IDs for the selected item.
  */
-function handleViewTypeChange(viewType, qid) {
+function updateAuthorityDropdown(qid) {
+    const authoritySelect = document.getElementById('authoritySelect');
+    const projectUrl = document.getElementById('projectUrl');
+    const iframe = document.getElementById('projectIframe');
+
+    if (!authoritySelect || !projectUrl || !iframe) return;
+
+    const authorities = itemAuthorityIds[qid] || [];
+
+    if (authorities.length === 0) {
+        authoritySelect.style.display = 'none';
+        projectUrl.style.display = 'none';
+        iframe.src = 'no-content.html';
+        return;
+    }
+
+    authoritySelect.style.display = '';
+    projectUrl.style.display = '';
+    authoritySelect.innerHTML = '';
+
+    authorities.forEach((auth, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `${auth.propertyLabel} (${auth.propertyId}): ${auth.value}`;
+        authoritySelect.appendChild(option);
+    });
+
+    authoritySelect.onchange = () => {
+        updateAuthorityDisplay(qid, parseInt(authoritySelect.value, 10));
+    };
+
+    // Load the first authority immediately
+    updateAuthorityDisplay(qid, 0);
+}
+
+/**
+ * UPDATE AUTHORITY DISPLAY
+ * Load the selected authority page URL into the iframe.
+ */
+function updateAuthorityDisplay(qid, index) {
+    const authorities = itemAuthorityIds[qid] || [];
+    const auth = authorities[index];
+    if (!auth) return;
+
+    const iframe = document.getElementById('projectIframe');
+    const projectUrl = document.getElementById('projectUrl');
+
+    if (!iframe || !projectUrl) return;
+
+    projectUrl.href = auth.url;
+    projectUrl.textContent = auth.url;
+    iframe.src = auth.url;
+}
+
+/**
+ * HANDLE VIEW TYPE CHANGE
+ * Switch between Wikimedia, Wikidocumentaries, and Authority ID views
+ */
+async function handleViewTypeChange(viewType, qid) {
     const projectSelect = document.getElementById('projectSelect');
     const languageSelect = document.getElementById('languageSelect');
+    const authoritySelect = document.getElementById('authoritySelect');
 
     if (viewType === 'viewWikidocumentaries') {
         if (projectSelect) projectSelect.style.display = 'none';
         if (languageSelect) languageSelect.style.display = 'none';
+        if (authoritySelect) authoritySelect.style.display = 'none';
         if (qid) {
             const currentLang = (languageSelect && languageSelect.value) ? languageSelect.value : lang;
             updateWikidocumentariesDisplay(qid, currentLang);
         }
+    } else if (viewType === 'viewWebData') {
+        if (projectSelect) projectSelect.style.display = 'none';
+        if (languageSelect) languageSelect.style.display = 'none';
+        if (qid) {
+            // Lazy-fetch authority IDs for any currently displayed items not yet fetched
+            await updateAuthorityIdsForQids(currentDisplayedQids);
+            updateAuthorityDropdown(qid);
+        }
     } else if (viewType === 'viewWikimedia') {
+        if (authoritySelect) authoritySelect.style.display = 'none';
         if (qid) {
             updateProjectDropdown(qid);
         } else {
@@ -527,6 +683,7 @@ function initializePlaceholder() {
     const iframe = document.getElementById('projectIframe');
     const projectSelect = document.getElementById('projectSelect');
     const languageSelect = document.getElementById('languageSelect');
+    const authoritySelect = document.getElementById('authoritySelect');
     const projectUrl = document.getElementById('projectUrl');
     
     if (!iframe) return;
@@ -534,6 +691,7 @@ function initializePlaceholder() {
     // Hide dropdowns and link by default
     projectSelect.style.display = 'none';
     languageSelect.style.display = 'none';
+    authoritySelect.style.display = 'none';
     projectUrl.style.display = 'none';
     
     // Load placeholder from file
@@ -547,12 +705,21 @@ function updateProjectDropdown(qid) {
         return;
     }
 
+    if (viewTypeSelect && viewTypeSelect.value === 'viewWebData') {
+        handleViewTypeChange('viewWebData', qid);
+        return;
+    }
+
     const projectSelect = document.getElementById('projectSelect');
     const languageSelect = document.getElementById('languageSelect');
+    const authoritySelect = document.getElementById('authoritySelect');
     const projectUrl = document.getElementById('projectUrl');
     const iframe = document.getElementById('projectIframe');
     
-    if (!projectSelect || !languageSelect || !projectUrl || !iframe) return;
+    if (!projectSelect || !languageSelect || !authoritySelect || !projectUrl || !iframe) return;
+
+    // Hide authority select for Wikimedia view
+    authoritySelect.style.display = 'none';
     
     const availableProjects = getAvailableProjects(qid);
     
@@ -664,6 +831,7 @@ async function populateItems(query, page = 0) {
     if (page === 0) {
         itemList.innerHTML = ''; 
         currentPage = 0;  // Reset page counter
+        currentDisplayedQids = [];  // Reset lazy-fetch tracking
         if (markersLayer) markersLayer.clearLayers();
     }
 
@@ -681,8 +849,12 @@ async function populateItems(query, page = 0) {
     // Show load more button if we got a full page of results
     loadMoreButton.style.display = '';
 
-    // 3. FETCH SITELINKS FOR ALL ITEMS (new step)
+    // 3. FETCH SITELINKS FOR ALL ITEMS; authority IDs are fetched lazily on viewWebData selection
     await updateSitelinksForCurrentResults(items);
+
+    // Track which QIDs are now displayed for lazy authority ID fetching
+    const newQids = items.map(item => item.item.value.split('/').pop());
+    currentDisplayedQids = currentDisplayedQids.concat(newQids);
 
     items.forEach((item, index) => {
         // 4. Populate the Left-Pane List
