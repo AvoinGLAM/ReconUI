@@ -247,6 +247,8 @@ async function fetchSitelinksForItems(qids) {
 /**
  * AUTHORITY IDS BATCH QUERY
  * Fetches external identifier values and their formatter URLs (P1630) for a batch of items.
+ * Only external ID properties that have a P1630 formatter URL are included — properties
+ * without one cannot produce a displayable URL and are excluded.
  * Batches requests into groups of 10 to avoid Wikidata limits.
  */
 async function fetchAuthorityIdsForItems(qids) {
@@ -264,8 +266,8 @@ async function fetchAuthorityIdsForItems(qids) {
             VALUES ?item { ${values} }
             ?item ?p ?value .
             ?property wikibase:directClaim ?p ;
-                      wikibase:propertyType wikibase:ExternalId .
-            OPTIONAL { ?property wdt:P1630 ?fmtUrl . }
+                      wikibase:propertyType wikibase:ExternalId ;
+                      wdt:P1630 ?fmtUrl .
             SERVICE wikibase:label { bd:serviceParam wikibase:language "${lang}". }
         }
         GROUP BY ?item ?property ?propertyLabel ?value
@@ -839,9 +841,11 @@ async function populateItems(query, page = 0) {
     // Show load more button if we got a full page of results
     loadMoreButton.style.display = '';
 
-    // 3. FETCH SITELINKS AND AUTHORITY IDS FOR ALL ITEMS
-    await updateSitelinksForCurrentResults(items);
-    await updateAuthorityIdsForCurrentResults(items);
+    // 3. FETCH SITELINKS AND AUTHORITY IDS FOR ALL ITEMS (in parallel)
+    await Promise.all([
+        updateSitelinksForCurrentResults(items),
+        updateAuthorityIdsForCurrentResults(items)
+    ]);
 
     items.forEach((item, index) => {
         // 4. Populate the Left-Pane List
