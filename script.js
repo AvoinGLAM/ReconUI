@@ -474,8 +474,9 @@ function updateProjectDropdown(qid) {
     const projectSelect = document.getElementById('projectSelect');
     const languageSelect = document.getElementById('languageSelect');
     const projectUrl = document.getElementById('projectUrl');
+    const iframe = document.getElementById('projectIframe');
     
-    if (!projectSelect || !languageSelect || !projectUrl) return;
+    if (!projectSelect || !languageSelect || !projectUrl || !iframe) return;
     
     const availableProjects = getAvailableProjects(qid);
     
@@ -484,6 +485,8 @@ function updateProjectDropdown(qid) {
         projectSelect.style.display = 'none';
         languageSelect.style.display = 'none';
         projectUrl.style.display = 'none';
+        iframe.src = '';  // Clear iframe
+        iframe.srcdoc = '';  // Clear any srcdoc content
         
         // Create or update message
         let messageEl = document.getElementById('noSitelinksMessage');
@@ -513,6 +516,7 @@ function updateProjectDropdown(qid) {
     
     // Clear current options
     projectSelect.innerHTML = '';
+    languageSelect.innerHTML = '';
     
     // Add available projects
     availableProjects.forEach(project => {
@@ -532,6 +536,7 @@ function updateProjectDropdown(qid) {
         updateLanguageDropdown(qid, projectSelect.value);
     }
 }
+
 /**
  * UPDATE LANGUAGE DROPDOWN
  * Populate with available languages for the selected item and project.
