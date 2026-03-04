@@ -52,28 +52,18 @@
                 <div class="component" id="leftcomponent">
                     <div class="component-header">
                         <div class="component-header-top">
-                            <select>
-                                <option value="viewWebPage">View web page</option>
-                                <option value="viewWikimedia" selected>View Wikimedia site</option>
+                            <select id="viewTypeSelect">
+                                <option value="viewWebPage">Web page</option>
+                                <option value="viewWikimedia" selected>Wikimedia site</option>
+                                <option value="viewWikidocumentaries">Wikidocumentaries</option>
                                 <option value="compareCoordinates">Compare coordinates</option>
                                 <option value="viewProperties">View properties</option>
-                                <option value="reconciliationSettings">Reconciliation settings</option>
-                                <option value="mentions">Mentions in Wikipedia articles</option>
                             </select>
                         </div>
                         <div class="component-header-bottom">
                             <div class="row">
-                                <div class="bold-text">Project</div>
-                                <select id="projectSelect">
-                                    <option>Wikidocumentaries</option>
-                                    <option>Wikipedia</option>
-                                    <option>Wikimedia Commons</option>
-                                    <option>Reasonator</option>
-                                </select>
-                                <select id="languageSelect">
-                                    <option value="en" selected>English</option>
-                                    <option value="fi">Finnish</option>
-                                </select>
+                                <select id="projectSelect"></select>
+                                <select id="languageSelect"></select>
                             </div>
                             <div class="row">
                                 <a id="projectUrl" href="#" target="_blank">Simple text</a>

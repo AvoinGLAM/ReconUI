@@ -121,7 +121,7 @@ function handleMatchButtonClick(qid) {
 async function fetchWikidataItems(query, page, limit) {
     const offset = page * limit;
     const sparqlQuery = `
-    SELECT ?item ?itemLabel ?itemDescription ?coord 
+    SELECT DISTINCT ?item ?itemLabel ?itemDescription ?coord 
         (IF(BOUND(?img), URI(CONCAT("https://commons.wikimedia.org/wiki/Special:FilePath/", 
         REPLACE(STR(?img), "http://commons.wikimedia.org/wiki/Special:FilePath/", ""), "?width=300")), "") AS ?thumb)
     WHERE {
@@ -143,7 +143,15 @@ async function fetchWikidataItems(query, page, limit) {
     const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
     const response = await fetch(url);
     const data = await response.json();
-    return data.results.bindings;
+    
+    // Deduplicate results by QID
+    const seen = new Set();
+    return data.results.bindings.filter(item => {
+        const qid = item.item.value.split('/').pop();
+        if (seen.has(qid)) return false;
+        seen.add(qid);
+        return true;
+    });
 }
 
 /**
@@ -352,15 +360,22 @@ function getWikimediaUrl(qid, projectType, langCode) {
 function createItemElement(item) {
     const itemElement = document.createElement('div');
     itemElement.className = 'item';
+    
+    const qid = item.item.value.split('/').pop();
+    itemElement.setAttribute('data-qid', qid);
+    
+    console.log('Creating item element for QID:', qid);  // ADD THIS
 
     itemElement.addEventListener('click', () => {
         document.querySelectorAll('.item').forEach(el => el.classList.remove('selected'));
         itemElement.classList.add('selected');
 
-        const qid = item.item.value.split('/').pop();
+        const clickedQid = itemElement.getAttribute('data-qid');
+        console.log('Item clicked - clickedQid from data-qid:', clickedQid);  // ADD THIS
+        console.log('itemSitelinks keys:', Object.keys(itemSitelinks));  // ADD THIS
+        console.log('itemSitelinks[clickedQid]:', itemSitelinks[clickedQid]);  // ADD THIS
         
-        // Update project and language dropdowns with available options
-        updateProjectDropdown(qid);
+        updateProjectDropdown(clickedQid);
     });
 
     const img = document.createElement('img');
@@ -379,7 +394,6 @@ function createItemElement(item) {
     details.appendChild(label);
 
     const labelLink = document.createElement('a');
-    const qid = item.item.value.split('/').pop();
     labelLink.href = `https://www.wikidata.org/wiki/${qid}`;
     labelLink.className = 'qid-link';
     labelLink.textContent = qid;
@@ -394,7 +408,8 @@ function createItemElement(item) {
     button.textContent = 'Match';
     button.addEventListener('click', (e) => {
         e.stopPropagation(); // Stops the 'item click' from selecting/refreshing the preview
-        sendMatchToSheet(qid);
+        const matchQid = itemElement.getAttribute('data-qid');  // CHANGE THIS
+        sendMatchToSheet(matchQid);
     }); 
 
     itemElement.appendChild(img);
