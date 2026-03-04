@@ -65,6 +65,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initializeDynamicInputFields();
+
+    const viewTypeSelect = document.getElementById('viewTypeSelect');
+    if (viewTypeSelect) {
+        viewTypeSelect.addEventListener('change', () => {
+            const selectedQid = document.querySelector('.item.selected')?.getAttribute('data-qid');
+            handleViewTypeChange(viewTypeSelect.value, selectedQid);
+        });
+    }
 });
 
 /**
@@ -377,6 +385,56 @@ function buildWikimediaUrl(projectKey, langCode, title) {
 }
 
 /**
+ * BUILD WIKIDOCUMENTARIES URL
+ * Constructs URL in the format https://wikidocumentaries-demo.wmcloud.org/{qid}?language={langCode}
+ */
+function buildWikidocumentariesUrl(qid, langCode) {
+    return `https://wikidocumentaries-demo.wmcloud.org/${encodeURIComponent(qid)}?language=${encodeURIComponent(langCode)}`;
+}
+
+/**
+ * UPDATE WIKIDOCUMENTARIES DISPLAY
+ * Load the Wikidocumentaries page for a QID into the iframe
+ */
+function updateWikidocumentariesDisplay(qid, langCode) {
+    const iframe = document.getElementById('projectIframe');
+    const projectUrl = document.getElementById('projectUrl');
+
+    if (!iframe || !projectUrl) return;
+
+    const url = buildWikidocumentariesUrl(qid, langCode);
+    projectUrl.href = url;
+    projectUrl.textContent = url;
+    projectUrl.style.display = '';
+    iframe.src = url;
+}
+
+/**
+ * HANDLE VIEW TYPE CHANGE
+ * Switch between Wikimedia and Wikidocumentaries views
+ */
+function handleViewTypeChange(viewType, qid) {
+    const projectSelect = document.getElementById('projectSelect');
+    const languageSelect = document.getElementById('languageSelect');
+
+    if (viewType === 'viewWikidocumentaries') {
+        if (projectSelect) projectSelect.style.display = 'none';
+        if (languageSelect) languageSelect.style.display = 'none';
+        if (qid) {
+            const currentLang = (languageSelect && languageSelect.value) ? languageSelect.value : lang;
+            updateWikidocumentariesDisplay(qid, currentLang);
+        }
+    } else if (viewType === 'viewWikimedia') {
+        if (qid) {
+            updateProjectDropdown(qid);
+        } else {
+            if (projectSelect) projectSelect.style.display = '';
+            if (languageSelect) languageSelect.style.display = '';
+        }
+    }
+}
+
+/**
  * GET URL FOR SPECIFIC ITEM, PROJECT, AND LANGUAGE
  * Now returns FORMATTED URL, not raw sitelink
  */
@@ -483,6 +541,12 @@ function initializePlaceholder() {
 }
 
 function updateProjectDropdown(qid) {
+    const viewTypeSelect = document.getElementById('viewTypeSelect');
+    if (viewTypeSelect && viewTypeSelect.value === 'viewWikidocumentaries') {
+        handleViewTypeChange('viewWikidocumentaries', qid);
+        return;
+    }
+
     const projectSelect = document.getElementById('projectSelect');
     const languageSelect = document.getElementById('languageSelect');
     const projectUrl = document.getElementById('projectUrl');
