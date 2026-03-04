@@ -532,12 +532,6 @@ function updateProjectDropdown(qid) {
         updateLanguageDropdown(qid, projectSelect.value);
     }
 }
-
-/**
- * UPDATE LANGUAGE DROPDOWN
- * Populate with available languages for the selected item and project.
- * Hides the dropdown for multilingual projects (Wikimedia Commons, Metawiki).
- */
 /**
  * UPDATE LANGUAGE DROPDOWN
  * Populate with available languages for the selected item and project.
