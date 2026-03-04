@@ -7,6 +7,8 @@ let originalContext = null;
 let isSearching = false;
 let itemSitelinks = {};  // Cache: { qid: { projectType: [{ lang, title, url }, ...] } }
 let itemAuthorityIds = {};  // Cache: { qid: [{ propertyId, propertyLabel, value, url }] }
+let currentDisplayedQids = [];       // QIDs currently shown in the result list
+let fetchedAuthorityIdsForQids = new Set();  // QIDs whose authority IDs have already been fetched
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -378,15 +380,18 @@ function processAuthorityIdsResults(results) {
 }
 
 /**
- * UPDATE AUTHORITY IDS CACHE AFTER SEARCH
- * Called after items are fetched to get their external authority IDs
+ * FETCH AND CACHE AUTHORITY IDS FOR A LIST OF QIDS
+ * Skips QIDs that have already been fetched (checked against fetchedAuthorityIdsForQids).
  */
-async function updateAuthorityIdsForCurrentResults(items) {
-    const qids = items.map(item => item.item.value.split('/').pop());
-    const results = await fetchAuthorityIdsForItems(qids);
+async function updateAuthorityIdsForQids(qids) {
+    const unfetched = qids.filter(qid => !fetchedAuthorityIdsForQids.has(qid));
+    if (unfetched.length === 0) return;
+
+    const results = await fetchAuthorityIdsForItems(unfetched);
     const newCache = processAuthorityIdsResults(results);
     itemAuthorityIds = { ...itemAuthorityIds, ...newCache };
-    console.log("Authority IDs cached for QIDs:", qids);
+    unfetched.forEach(qid => fetchedAuthorityIdsForQids.add(qid));
+    console.log("Authority IDs cached for QIDs:", unfetched);
 }
 
 // ===== CONSTANTS FOR URL BUILDING =====
@@ -553,7 +558,7 @@ function updateAuthorityDisplay(qid, index) {
  * HANDLE VIEW TYPE CHANGE
  * Switch between Wikimedia, Wikidocumentaries, and Authority ID views
  */
-function handleViewTypeChange(viewType, qid) {
+async function handleViewTypeChange(viewType, qid) {
     const projectSelect = document.getElementById('projectSelect');
     const languageSelect = document.getElementById('languageSelect');
     const authoritySelect = document.getElementById('authoritySelect');
@@ -570,6 +575,8 @@ function handleViewTypeChange(viewType, qid) {
         if (projectSelect) projectSelect.style.display = 'none';
         if (languageSelect) languageSelect.style.display = 'none';
         if (qid) {
+            // Lazy-fetch authority IDs for any currently displayed items not yet fetched
+            await updateAuthorityIdsForQids(currentDisplayedQids);
             updateAuthorityDropdown(qid);
         }
     } else if (viewType === 'viewWikimedia') {
@@ -824,6 +831,7 @@ async function populateItems(query, page = 0) {
     if (page === 0) {
         itemList.innerHTML = ''; 
         currentPage = 0;  // Reset page counter
+        currentDisplayedQids = [];  // Reset lazy-fetch tracking
         if (markersLayer) markersLayer.clearLayers();
     }
 
@@ -841,11 +849,12 @@ async function populateItems(query, page = 0) {
     // Show load more button if we got a full page of results
     loadMoreButton.style.display = '';
 
-    // 3. FETCH SITELINKS AND AUTHORITY IDS FOR ALL ITEMS (in parallel)
-    await Promise.all([
-        updateSitelinksForCurrentResults(items),
-        updateAuthorityIdsForCurrentResults(items)
-    ]);
+    // 3. FETCH SITELINKS FOR ALL ITEMS; authority IDs are fetched lazily on viewWebData selection
+    await updateSitelinksForCurrentResults(items);
+
+    // Track which QIDs are now displayed for lazy authority ID fetching
+    const newQids = items.map(item => item.item.value.split('/').pop());
+    currentDisplayedQids = currentDisplayedQids.concat(newQids);
 
     items.forEach((item, index) => {
         // 4. Populate the Left-Pane List
