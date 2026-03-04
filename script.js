@@ -5,6 +5,7 @@ let currentPage = 0;           // ONLY DECLARATION
 const resultsPerPage = 20;     // ONLY DECLARATION
 let originalContext = null;
 let isSearching = false;
+let itemSitelinks = {};  // Cache: { qid: { projectType: [{ lang, title, url }, ...] } }
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -145,6 +146,209 @@ async function fetchWikidataItems(query, page, limit) {
     return data.results.bindings;
 }
 
+/**
+ * SITELINKS BATCH QUERY
+ * Fetches all sitelinks for a batch of Wikidata items
+ */
+async function fetchSitelinksForItems(qids) {
+    if (!qids || qids.length === 0) return [];
+
+    // Build VALUES clause for SPARQL
+    const values = qids.map(qid => `wd:${qid}`).join(' ');
+    
+    const sparqlQuery = `
+    SELECT ?item ?sitelink ?wiki ?title WHERE {
+        VALUES ?item { ${values} }
+        
+        ?sitelink schema:about ?item ;
+                  schema:isPartOf ?wiki ;
+                  schema:name ?title .
+        
+        FILTER(STRSTARTS(STR(?wiki), "https://"))
+    }
+    ORDER BY ?item ?wiki`;
+    
+    try {
+        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        console.log("Sitelinks fetched:", data.results.bindings.length, "results");
+        return data.results.bindings;
+    } catch (error) {
+        console.error("Error fetching sitelinks:", error);
+        return [];
+    }
+}
+
+/**
+ * PROCESS SITELINKS RESULTS
+ * Takes raw sitelinks results and caches them organized by item
+ */
+function processSitelinksResults(results) {
+    const cache = {};
+    
+    results.forEach(result => {
+        const qid = result.item.value.split('/').pop();  // Extract QID from URL
+        
+        if (!cache[qid]) {
+            cache[qid] = {};
+        }
+        
+        // Parse this single sitelink
+        const wikiUrl = result.wiki.value;
+        const sitelink = result.sitelink.value;
+        const title = result.title.value;
+        
+        const match = wikiUrl.match(/https:\/\/([a-z-]+)\.([a-z]+)\.org\//);
+        
+        if (match) {
+            const lang = match[1];
+            const project = match[2];
+            const projectType = `${project}`;
+            
+            if (!cache[qid][projectType]) {
+                cache[qid][projectType] = [];
+            }
+            
+            cache[qid][projectType].push({
+                lang: lang,
+                title: title,
+                url: sitelink,
+                wikiUrl: wikiUrl
+            });
+        }
+    });
+    
+    return cache;
+}
+
+/**
+ * UPDATE DROPDOWN DATA AFTER SEARCH
+ * Called after items are fetched to get their sitelinks
+ */
+async function updateSitelinksForCurrentResults(items) {
+    // Extract QIDs from items
+    const qids = items.map(item => {
+        const itemUrl = item.item.value;
+        return itemUrl.split('/').pop();
+    });
+    
+    // Fetch sitelinks for all items
+    const sitelinksResults = await fetchSitelinksForItems(qids);
+    
+    // Cache the results
+    const newCache = processSitelinksResults(sitelinksResults);
+    itemSitelinks = { ...itemSitelinks, ...newCache };
+    
+    console.log("Sitelinks cached for QIDs:", qids);
+    console.log("Sitelinks cache:", itemSitelinks);
+}
+
+// ===== CONSTANTS FOR URL BUILDING =====
+const PROJECT_MAP = {
+    'Wikipedia': 'wikipedia',
+    'Wikisource': 'wikisource',
+    'Wikivoyage': 'wikivoyage',
+    'Wikibooks': 'wikibooks'
+};
+
+const MULTILINGUAL_PROJECTS = {
+    'Wikimedia Commons': 'commons',
+    'Metawiki': 'meta'
+};
+
+const PROJECT_DOMAINS = {
+    'wikipedia': 'wikipedia.org',
+    'wikisource': 'wikisource.org',
+    'wikivoyage': 'wikivoyage.org',
+    'wikibooks': 'wikibooks.org',
+    'commons': 'commons.wikimedia.org',
+    'meta': 'meta.wikimedia.org'
+};
+
+/**
+ * GET AVAILABLE PROJECTS FOR AN ITEM
+ * Only returns the 4 supported projects in the specified order.
+ */
+function getAvailableProjects(qid) {
+    if (!itemSitelinks[qid]) return [];
+
+    const sitelinks = itemSitelinks[qid];
+    const projects = [];
+
+    Object.entries(PROJECT_MAP).forEach(([projectName, projectKey]) => {
+        if (sitelinks[projectKey]) {
+            projects.push(projectName);
+        }
+    });
+
+    Object.entries(MULTILINGUAL_PROJECTS).forEach(([projectName, langKey]) => {
+        if (sitelinks['wikimedia']?.some(e => e.lang === langKey)) {
+            projects.push(projectName);
+        }
+    });
+
+    return projects;
+}
+
+/**
+ * GET AVAILABLE LANGUAGES FOR AN ITEM AND PROJECT
+ * Only applicable for localized projects (Wikipedia, Wikisource).
+ */
+function getAvailableLanguages(qid, projectType) {
+    const normalizedProject = PROJECT_MAP[projectType];
+    
+    if (!normalizedProject || !itemSitelinks[qid]?.[normalizedProject]) return [];
+
+    return itemSitelinks[qid][normalizedProject].map(entry => ({
+        code: entry.lang,
+        title: entry.title
+    }));
+}
+
+/**
+ * BUILD WIKIMEDIA URL WITH PROPER STRUCTURE
+ * Constructs formatted URL with &mobileaction=toggle_view_mobile
+ */
+function buildWikimediaUrl(projectKey, langCode, title) {
+    const domain = PROJECT_DOMAINS[projectKey];
+    if (!domain) return null;
+    
+    const baseUrl = (projectKey === 'commons' || projectKey === 'meta') 
+        ? `https://${domain}/w/index.php?title=${encodeURIComponent(title)}&mobileaction=toggle_view_mobile`
+        : `https://${langCode}.${domain}/w/index.php?title=${encodeURIComponent(title)}&mobileaction=toggle_view_mobile`;
+    
+    return baseUrl;
+}
+
+/**
+ * GET URL FOR SPECIFIC ITEM, PROJECT, AND LANGUAGE
+ * Now returns FORMATTED URL, not raw sitelink
+ */
+function getWikimediaUrl(qid, projectType, langCode) {
+    if (!itemSitelinks[qid]) return null;
+
+    const normalizedProject = PROJECT_MAP[projectType];
+    
+    // Localized projects
+    if (normalizedProject) {
+        const sitelinks = itemSitelinks[qid][normalizedProject];
+        const entry = sitelinks?.find(e => e.lang === langCode);
+        if (!entry) return null;
+        return buildWikimediaUrl(normalizedProject, langCode, entry.title);
+    }
+
+    // Multilingual projects
+    const langKey = MULTILINGUAL_PROJECTS[projectType];
+    if (!langKey) return null;
+    
+    const sitelinks = itemSitelinks[qid]['wikimedia'];
+    const entry = sitelinks?.find(e => e.lang === langKey);
+    if (!entry) return null;
+    return buildWikimediaUrl(langKey, langCode, entry.title);
+}
+
 function createItemElement(item) {
     const itemElement = document.createElement('div');
     itemElement.className = 'item';
@@ -154,18 +358,9 @@ function createItemElement(item) {
         itemElement.classList.add('selected');
 
         const qid = item.item.value.split('/').pop();
-        const url = `https://wikidocumentaries-demo.wmcloud.org/${qid}?language=en`;
-
-        const projectUrl = document.getElementById('projectUrl');
-        if (projectUrl) {
-            projectUrl.href = url;
-            projectUrl.textContent = url;
-        }
-
-        const iframe = document.getElementById('projectIframe');
-        if (iframe) {
-            iframe.src = url;
-        }
+        
+        // Update project and language dropdowns with available options
+        updateProjectDropdown(qid);
     });
 
     const img = document.createElement('img');
@@ -209,6 +404,105 @@ function createItemElement(item) {
     return itemElement;
 }
 
+/**
+ * UPDATE PROJECT DROPDOWN
+ * Populate with available projects for the selected item
+ */
+function updateProjectDropdown(qid) {
+    const projectSelect = document.getElementById('projectSelect');
+    if (!projectSelect) return;
+    
+    const availableProjects = getAvailableProjects(qid);
+    
+    // Clear current options
+    projectSelect.innerHTML = '';
+    
+    // Add available projects
+    availableProjects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project;
+        option.textContent = project;
+        projectSelect.appendChild(option);
+    });
+    
+    // Remove old listener and add new one
+    projectSelect.onchange = () => {
+        updateLanguageDropdown(qid, projectSelect.value);
+    };
+    
+    // Trigger language dropdown update for first project
+    if (availableProjects.length > 0) {
+        updateLanguageDropdown(qid, projectSelect.value);
+    }
+}
+
+/**
+ * UPDATE LANGUAGE DROPDOWN
+ * Populate with available languages for the selected item and project.
+ * Hides the dropdown for multilingual projects (Wikimedia Commons, Metawiki).
+ */
+/**
+ * UPDATE LANGUAGE DROPDOWN
+ * Populate with available languages for the selected item and project.
+ * For multilingual projects, directly update display without language selection.
+ */
+function updateLanguageDropdown(qid, projectType) {
+    const languageSelect = document.getElementById('languageSelect');
+    if (!languageSelect) return;
+
+    const availableLanguages = getAvailableLanguages(qid, projectType);
+
+    // For multilingual projects (no languages)
+    if (availableLanguages.length === 0) {
+        languageSelect.style.display = 'none';
+        updateWikimediaDisplay(qid, projectType);
+        return;
+    }
+
+    // For localized projects (show language dropdown)
+    languageSelect.style.display = '';
+    languageSelect.innerHTML = '';
+
+    availableLanguages.forEach(lang => {
+        const option = document.createElement('option');
+        option.value = lang.code;
+        option.textContent = `${lang.code} - ${lang.title}`;
+        languageSelect.appendChild(option);
+    });
+
+    languageSelect.onchange = () => {
+        updateWikimediaDisplay(qid, projectType, languageSelect.value);
+    };
+
+    // Trigger display update for first language
+    if (availableLanguages.length > 0) {
+        updateWikimediaDisplay(qid, projectType, availableLanguages[0].code);
+    }
+}
+
+/**
+ * UPDATE WIKIMEDIA DISPLAY
+ * Load the selected Wikimedia page into the iframe
+ */
+function updateWikimediaDisplay(qid, projectType, langCode) {
+    const url = getWikimediaUrl(qid, projectType, langCode);
+    
+    if (url) {
+        const projectUrl = document.getElementById('projectUrl');
+        if (projectUrl) {
+            projectUrl.href = url;
+            projectUrl.textContent = url;
+        }
+
+        const iframe = document.getElementById('projectIframe');
+        if (iframe) {
+            iframe.src = url;
+        }
+    } else {
+        console.warn(`No URL found for QID ${qid}, project ${projectType}, language ${langCode}`);
+    }
+}
+
 async function populateItems(query, page = 0) {
     const itemList = document.getElementById('itemList');
     
@@ -221,12 +515,15 @@ async function populateItems(query, page = 0) {
     // 2. Fetch data from SPARQL
     const items = await fetchWikidataItems(query, page, resultsPerPage);
 
+    // 3. FETCH SITELINKS FOR ALL ITEMS (new step)
+    await updateSitelinksForCurrentResults(items);
+
     items.forEach((item, index) => {
-        // 3. Populate the Left-Pane List
+        // 4. Populate the Left-Pane List
         const itemElement = createItemElement(item);
         itemList.appendChild(itemElement);
 
-        // 4. Populate the Map (Right-Pane)
+        // 5. Populate the Map (Right-Pane)
         if (item.coord && markersLayer) {
             // Parse "Point(lon lat)" format
             const coords = item.coord.value.replace('Point(', '').replace(')', '').split(' ');
@@ -258,13 +555,16 @@ async function populateItems(query, page = 0) {
             markersLayer.addLayer(marker);
         }
 
-        // 5. Auto-select the first result to trigger the preview iframe
+        // 6. Auto-select the first result to trigger the preview iframe
         if (index === 0 && page === 0) {
             itemElement.click();
         }
     });
 
-    // 6. Adjust Map View to fit all markers
+    // 7. Update pagination counter
+    currentPage = page;
+
+    // 8. Adjust Map View to fit all markers
     if (markersLayer.getLayers().length > 0) {
         map.fitBounds(markersLayer.getBounds(), { padding: [50, 50] });
     }

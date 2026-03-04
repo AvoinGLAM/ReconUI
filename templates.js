@@ -28,11 +28,10 @@ function getTemplate(templateName) {
             <div class="row">
                 <div class="bold-text">Project</div>
                 <select id="projectSelect">
-                    <option>Wikidocumentaries</option>
                     <option>Wikipedia</option>
+                    <option>Wikisource</option>
                     <option>Wikimedia Commons</option>
-                    <option>Reasonator</option>
-                    <option>Wikivoyage</option>
+                    <option>Metawiki</option>
                 </select>
                 <select id="languageSelect">
                     <option value="en" selected>English</option>
