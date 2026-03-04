@@ -309,15 +309,15 @@ function getAvailableLanguages(qid, projectType) {
 
 /**
  * BUILD WIKIMEDIA URL WITH PROPER STRUCTURE
- * Constructs formatted URL with &mobileaction=toggle_view_mobile
+ * Constructs formatted URL with &?useformat=mobile&useskin=vector-2022
  */
 function buildWikimediaUrl(projectKey, langCode, title) {
     const domain = PROJECT_DOMAINS[projectKey];
     if (!domain) return null;
     
     const baseUrl = (projectKey === 'commons' || projectKey === 'meta') 
-        ? `https://${domain}/w/index.php?title=${encodeURIComponent(title)}&mobileaction=toggle_view_mobile`
-        : `https://${langCode}.${domain}/w/index.php?title=${encodeURIComponent(title)}&mobileaction=toggle_view_mobile`;
+        ? `https://${domain}/w/index.php?title=${encodeURIComponent(title)}&?useformat=mobile&useskin=vector-2022`
+        : `https://${langCode}.${domain}/w/index.php?title=${encodeURIComponent(title)}&?useformat=mobile&useskin=vector-2022`;
     
     return baseUrl;
 }
