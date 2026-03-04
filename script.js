@@ -120,38 +120,64 @@ function handleMatchButtonClick(qid) {
  */
 async function fetchWikidataItems(query, page, limit) {
     const offset = page * limit;
-    const sparqlQuery = `
-    SELECT DISTINCT ?item ?itemLabel ?itemDescription ?coord 
-        (IF(BOUND(?img), URI(CONCAT("https://commons.wikimedia.org/wiki/Special:FilePath/", 
-        REPLACE(STR(?img), "http://commons.wikimedia.org/wiki/Special:FilePath/", ""), "?width=300")), "") AS ?thumb)
-    WHERE {
-        SERVICE wikibase:mwapi {
-            bd:serviceParam wikibase:endpoint "www.wikidata.org";
-                            wikibase:api "EntitySearch";
-                            mwapi:search "${query}";
-                            mwapi:language "${lang}";
-                            mwapi:limit "${limit}";
-                            mwapi:offset "${offset}".
-            ?item wikibase:apiOutputItem mwapi:item.
-            ?item wikibase:apiOutputItemLabel mwapi:label.
-        }
-        OPTIONAL { ?item wdt:P18 ?img. }
-        OPTIONAL { ?item wdt:P625 ?coord. }
-        SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],${lang},en". }
-    } GROUP BY ?item ?itemLabel ?itemDescription ?coord ?img LIMIT ${limit} OFFSET ${offset}`;
     
-    const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
-    const response = await fetch(url);
-    const data = await response.json();
+    console.log('Fetching with offset:', offset, 'limit:', limit, 'query:', query);
     
-    // Deduplicate results by QID
-    const seen = new Set();
-    return data.results.bindings.filter(item => {
-        const qid = item.item.value.split('/').pop();
-        if (seen.has(qid)) return false;
-        seen.add(qid);
-        return true;
-    });
+    try {
+        // Use SPARQL with mwapi, but fetch ALL results and manually paginate in JavaScript
+        // This is because mwapi doesn't support offset properly
+        const sparqlQuery = `
+        SELECT DISTINCT ?item ?itemLabel ?itemDescription ?coord 
+            (IF(BOUND(?img), URI(CONCAT("https://commons.wikimedia.org/wiki/Special:FilePath/", 
+            REPLACE(STR(?img), "http://commons.wikimedia.org/wiki/Special:FilePath/", ""), "?width=300")), "") AS ?thumb)
+        WHERE {
+            SERVICE wikibase:mwapi {
+                bd:serviceParam wikibase:endpoint "www.wikidata.org";
+                                wikibase:api "EntitySearch";
+                                mwapi:search "${query}";
+                                mwapi:language "${lang}";
+                                mwapi:limit "500".
+                ?item wikibase:apiOutputItem mwapi:item.
+                ?item wikibase:apiOutputItemLabel mwapi:label.
+            }
+            OPTIONAL { ?item wdt:P18 ?img. }
+            OPTIONAL { ?item wdt:P625 ?coord. }
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],${lang},en". }
+        } GROUP BY ?item ?itemLabel ?itemDescription ?coord ?img LIMIT 500`;
+        
+        const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+        
+        console.log('SPARQL query for search:', query);
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        console.log('Raw SPARQL results:', data.results.bindings.length);
+        
+        // Deduplicate results by QID
+        const seen = new Set();
+        const allResults = data.results.bindings.filter(item => {
+            const qid = item.item.value.split('/').pop();
+            if (seen.has(qid)) return false;
+            seen.add(qid);
+            return true;
+        });
+        
+        console.log('After deduplication:', allResults.length);
+        
+        // Manual pagination in JavaScript
+        const start = offset;
+        const end = offset + limit;
+        const paginatedResults = allResults.slice(start, end);
+        
+        console.log('Returning paginated results:', paginatedResults.length, '(from', start, 'to', end + ')');
+        
+        return paginatedResults;
+        
+    } catch (error) {
+        console.error("Error fetching items:", error);
+        return [];
+    }
 }
 
 /**
@@ -576,6 +602,9 @@ function updateWikimediaDisplay(qid, projectType, langCode) {
 
 async function populateItems(query, page = 0) {
     const itemList = document.getElementById('itemList');
+    const loadMoreButton = document.getElementById('loadMoreButton');
+    
+    console.log('populateItems called with query:', query, 'page:', page);
     
     // 1. Reset UI only for NEW searches (page 0)
     if (page === 0) {
@@ -586,6 +615,17 @@ async function populateItems(query, page = 0) {
 
     // 2. Fetch data from SPARQL
     const items = await fetchWikidataItems(query, page, resultsPerPage);
+    
+    console.log('Fetched items:', items.length);
+    
+    // If no items fetched, hide load more button
+    if (items.length === 0) {
+        loadMoreButton.style.display = 'none';
+        return;
+    }
+    
+    // Show load more button if we got a full page of results
+    loadMoreButton.style.display = '';
 
     // 3. FETCH SITELINKS FOR ALL ITEMS (new step)
     await updateSitelinksForCurrentResults(items);
