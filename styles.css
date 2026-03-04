@@ -269,8 +269,8 @@ a:hover {
     flex: 1;
     background: white;
     border-radius: 5px;
-    max-height: 100%;
-    overflow: auto;
+    height: 100%;
+    overflow: hidden;
 }
 
 .componentContent {
@@ -415,4 +415,12 @@ a.popup-link:hover {
 
 .iframe-placeholder.no-content {
     color: #999;
+}
+
+#projectIframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    overflow: hidden; /* Key: hide iframe's scrollbar */
 }

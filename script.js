@@ -478,33 +478,8 @@ function initializePlaceholder() {
     languageSelect.style.display = 'none';
     projectUrl.style.display = 'none';
     
-    // Show placeholder
-    iframe.srcdoc = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                * { margin: 0; padding: 0; }
-                body {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    height: 100vh;
-                    background-color: #f5f5f5;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                    color: #ccc;
-                }
-                .message {
-                    text-align: center;
-                    font-size: 16px;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="message">Select an item to view Wikimedia content</div>
-        </body>
-        </html>
-    `;
+    // Load placeholder from file
+    iframe.src = 'placeholder.html';
 }
 
 function updateProjectDropdown(qid) {
@@ -523,33 +498,8 @@ function updateProjectDropdown(qid) {
         languageSelect.style.display = 'none';
         projectUrl.style.display = 'none';
         
-        // Show placeholder in iframe
-        iframe.srcdoc = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    * { margin: 0; padding: 0; }
-                    body {
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        height: 100vh;
-                        background-color: #f5f5f5;
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                        color: #999;
-                    }
-                    .message {
-                        text-align: center;
-                        font-size: 16px;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="message">No Wikimedia articles found for this item</div>
-            </body>
-            </html>
-        `;
+        // Load no-content page
+        iframe.src = 'no-content.html';
         return;
     }
     
@@ -626,20 +576,15 @@ function updateLanguageDropdown(qid, projectType) {
  */
 function updateWikimediaDisplay(qid, projectType, langCode) {
     const url = getWikimediaUrl(qid, projectType, langCode);
+    const iframe = document.getElementById('projectIframe');
+    const projectUrl = document.getElementById('projectUrl');
+    
+    if (!iframe || !projectUrl) return;
     
     if (url) {
-        const projectUrl = document.getElementById('projectUrl');
-        if (projectUrl) {
-            projectUrl.href = url;
-            projectUrl.textContent = url;
-        }
-
-        const iframe = document.getElementById('projectIframe');
-        if (iframe) {
-            // Use srcdoc with nested iframe wrapper for reliable content rendering
-            const escapedUrl = url.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-            iframe.srcdoc = `<html><body style="margin:0;padding:0;height:100%;"><iframe src="${escapedUrl}" style="width:100%;height:100%;border:none;"></iframe></body></html>`;
-        }
+        projectUrl.href = url;
+        projectUrl.textContent = url;
+        iframe.src = url;  // Direct load - no srcdoc!
     } else {
         console.warn(`No URL found for QID ${qid}, project ${projectType}, language ${langCode}`);
     }
