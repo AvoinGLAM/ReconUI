@@ -29,18 +29,17 @@
                 <div class="itemList" id="itemList">
                     <div class="introduction-help">
                         <h2>Introduction</h2>
-                        <p>Welcome to this Wikidata reconciliation interface experiment!</p>
+                        <p>Welcome to <strong>Eka</strong> – the Wikidata reconciliation app!</p>
                         <p>Explore various ways to display Wikidata reconciliation candidates using rich data from different sources.</p>
-                        <p>Currently, you can enter a search term and receive results from Wikidata's Action API via SPARQL. You can view them in Wikidocumentaries and on the map. Other interfaces are not working.</p>
+                        <p>Currently, you can enter a search term and receive results from Wikidata's Action API via SPARQL. You can view each candidate in all Wikimedia projects and on the map. Other interfaces are not available for the time being.</p>
                         <p><strong>You cannot match data for real yet.</strong></p>
-                        <p>We hope to create an interface that can integrate with any data wrangling tool, read the items to be reconciled, and return the results in a simple format. Ideally, it could also integrate multiple search methods</p>
+                        <p>Eka will work with a spreadsheet, read the items to be reconciled, and return the matched Wikidata item's QID. Different search scenarios can also be developed, for example based on coordinates, authority ids or images, or using AI to find probable matches – and combinations of these.</p>
                         <p>Give it a try and <a href="https://github.com/AvoinGLAM/ReconUI/issues" target="_blank">share your feedback</a>!</p>
                         <h3>Help</h3>
                         <p>To start searching, follow these steps:</p>
                         <ul>
-                            <li>Type a search term in the input box above and hit "Submit".</li>
-                            <li>Navigate between candidates using the arrow keys.</li>
-                            <li>Click on the dropdown menus to switch views or settings.</li>
+                            <li>Type a search term in the input box above and hit "Submit" or press "Enter".</li>
+                            <li>Select a candidate to explore it in the two frames.</li>
                         </ul>
                     </div>
                 </div>
@@ -54,7 +53,7 @@
                         <div class="component-header-top">
                             <select id="viewTypeSelect">
                                 <option value="viewWebPage">Web page from source file</option>
-                                <option value="viewWebData">Web page from Wikidata</option>
+                                <option value="viewWebData">Authority file via Wikidata</option>
                                 <option value="viewWikimedia" selected>Wikimedia site</option>
                                 <option value="viewWikidocumentaries">Wikidocumentaries</option>
                                 <option value="compareCoordinates">Compare coordinates</option>
