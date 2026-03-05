@@ -248,9 +248,12 @@ async function fetchSitelinksForItems(qids) {
 
 /**
  * AUTHORITY IDS BATCH QUERY
- * Fetches external identifier values and their formatter URLs (P1630) for a batch of items.
+ * Fetches external identifier values, their formatter URLs (P1630), and — where
+ * available — their embed URL templates (P2720) for a batch of items.
  * Only external ID properties that have a P1630 formatter URL are included — properties
  * without one cannot produce a displayable URL and are excluded.
+ * P2720 is fetched as an OPTIONAL so properties that lack an embed template are
+ * still returned; the embed URL is simply omitted for those.
  * Batches requests into groups of 10 to avoid Wikidata limits.
  */
 async function fetchAuthorityIdsForItems(qids) {
@@ -264,12 +267,13 @@ async function fetchAuthorityIdsForItems(qids) {
         const values = batch.map(qid => `wd:${qid}`).join(' ');
 
         const sparqlQuery = `
-        SELECT ?item ?property ?propertyLabel ?value (SAMPLE(?fmtUrl) AS ?formatterUrl) WHERE {
+        SELECT ?item ?property ?propertyLabel ?value (SAMPLE(?fmtUrl) AS ?formatterUrl) (SAMPLE(?embedFmtUrl) AS ?embedUrl) WHERE {
             VALUES ?item { ${values} }
             ?item ?p ?value .
             ?property wikibase:directClaim ?p ;
                       wikibase:propertyType wikibase:ExternalId ;
                       wdt:P1630 ?fmtUrl .
+            OPTIONAL { ?property wdt:P2720 ?embedFmtUrl . }
             SERVICE wikibase:label { bd:serviceParam wikibase:language "${lang}". }
         }
         GROUP BY ?item ?property ?propertyLabel ?value
@@ -354,8 +358,11 @@ async function updateSitelinksForCurrentResults(items) {
 
 /**
  * PROCESS AUTHORITY IDS RESULTS
- * Takes raw SPARQL results and caches authority IDs per item,
- * constructing the target URL from the formatter URL (P1630).
+ * Takes raw SPARQL results and caches authority IDs per item, constructing:
+ * - `url`      from the P1630 formatter URL (always present)
+ * - `embedUrl` from the P2720 embed URL template (present only when the
+ *              property has one; undefined otherwise)
+ * Both URLs are produced by substituting the identifier value for `$1`.
  */
 function processAuthorityIdsResults(results) {
     const cache = {};
@@ -372,7 +379,9 @@ function processAuthorityIdsResults(results) {
 
         if (formatterUrl) {
             const url = formatterUrl.replace(/\$1/g, value);
-            cache[qid].push({ propertyId, propertyLabel, value, url });
+            const embedTemplate = result.embedUrl?.value;
+            const embedUrl = embedTemplate ? embedTemplate.replace(/\$1/g, value) : undefined;
+            cache[qid].push({ propertyId, propertyLabel, value, url, embedUrl });
         }
     });
 
@@ -497,8 +506,19 @@ function updateWikidocumentariesDisplay(qid, langCode) {
 }
 
 /**
+ * Returns an embed-friendly URL for the given authority entry.
+ * Uses the P2720 embed URL template value when one was returned by Wikidata;
+ * falls back to the standard P1630 formatter URL otherwise.
+ */
+function getEmbedUrl(auth) {
+    return auth.embedUrl || auth.url;
+}
+
+/**
  * UPDATE AUTHORITY DROPDOWN
- * Populate the authority source selector with available external IDs for the selected item.
+ * Populate the authority source selector with available external IDs for the
+ * selected item. Entries that have a P2720 embed URL are sorted to the top so
+ * the iframe is more likely to show content immediately.
  */
 function updateAuthorityDropdown(qid) {
     const authoritySelect = document.getElementById('authoritySelect');
@@ -520,7 +540,17 @@ function updateAuthorityDropdown(qid) {
     projectUrl.style.display = '';
     authoritySelect.innerHTML = '';
 
-    authorities.forEach((auth, index) => {
+    // Sort so entries with a P2720 embed URL appear first; preserve the
+    // original array index so updateAuthorityDisplay can look up by index.
+    const sorted = authorities
+        .map((auth, index) => ({ auth, index }))
+        .sort((a, b) => {
+            const aEmbed = a.auth.embedUrl ? 0 : 1;
+            const bEmbed = b.auth.embedUrl ? 0 : 1;
+            return aEmbed - bEmbed;
+        });
+
+    sorted.forEach(({ auth, index }) => {
         const option = document.createElement('option');
         option.value = index;
         option.textContent = `${auth.propertyLabel} (${auth.propertyId}): ${auth.value}`;
@@ -531,13 +561,16 @@ function updateAuthorityDropdown(qid) {
         updateAuthorityDisplay(qid, parseInt(authoritySelect.value, 10));
     };
 
-    // Load the first authority immediately
-    updateAuthorityDisplay(qid, 0);
+    // Load the first authority in sorted order immediately
+    updateAuthorityDisplay(qid, sorted[0].index);
 }
 
 /**
  * UPDATE AUTHORITY DISPLAY
- * Load the selected authority page URL into the iframe.
+ * Load the selected authority into the iframe using an embed-friendly URL where
+ * one is available, and show the standard page URL as a link.
+ * Sites that block iframe embedding via X-Frame-Options will not display in the
+ * frame; use the link above to open them in a new tab.
  */
 function updateAuthorityDisplay(qid, index) {
     const authorities = itemAuthorityIds[qid] || [];
@@ -551,7 +584,7 @@ function updateAuthorityDisplay(qid, index) {
 
     projectUrl.href = auth.url;
     projectUrl.textContent = auth.url;
-    iframe.src = auth.url;
+    iframe.src = getEmbedUrl(auth);
 }
 
 /**
