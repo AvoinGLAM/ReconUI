@@ -153,7 +153,7 @@ async function fetchWikidataItems(query, page, limit) {
             }
             OPTIONAL { ?item wdt:P18 ?img. }
             OPTIONAL { ?item wdt:P625 ?coord. }
-            SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],${lang},en". }
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],${lang},mul,en". }
         } GROUP BY ?item ?itemLabel ?itemDescription ?coord ?img LIMIT 500`;
         
         const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
