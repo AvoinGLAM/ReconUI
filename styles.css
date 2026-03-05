@@ -424,3 +424,7 @@ a.popup-link:hover {
     display: block;
     overflow: hidden; /* Key: hide iframe's scrollbar */
 }
+
+#projectUrl {
+    padding: 0 4px;
+}
