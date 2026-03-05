@@ -497,8 +497,34 @@ function updateWikidocumentariesDisplay(qid, langCode) {
 }
 
 /**
+ * EMBED URL BUILDERS
+ * Maps Wikidata property IDs to functions that produce an embed-friendly iframe
+ * URL from the raw identifier value. These platforms provide dedicated embed
+ * endpoints that explicitly permit cross-origin iframe loading, unlike their
+ * regular pages which block framing via X-Frame-Options or CSP.
+ * Add entries here as more platforms introduce embed endpoints.
+ */
+const EMBED_URL_BUILDERS = {
+    'P1902': value => `https://open.spotify.com/embed/artist/${value}`,         // Spotify artist ID
+    'P1651': value => `https://www.youtube.com/embed/${value}`,                  // YouTube video ID
+    'P3552': value => `https://widget.deezer.com/widget/auto/artist/${value}`,   // Deezer artist ID
+};
+
+/**
+ * Returns an embed-friendly URL for the given authority entry.
+ * Uses the platform's dedicated embed endpoint when one is known;
+ * falls back to the standard formatter URL otherwise.
+ */
+function getEmbedUrl(auth) {
+    const builder = EMBED_URL_BUILDERS[auth.propertyId];
+    return builder ? builder(auth.value) : auth.url;
+}
+
+/**
  * UPDATE AUTHORITY DROPDOWN
- * Populate the authority source selector with available external IDs for the selected item.
+ * Populate the authority source selector with available external IDs for the
+ * selected item. Entries for platforms that have a known embed URL are sorted
+ * to the top so the iframe is more likely to show content immediately.
  */
 function updateAuthorityDropdown(qid) {
     const authoritySelect = document.getElementById('authoritySelect');
@@ -520,7 +546,17 @@ function updateAuthorityDropdown(qid) {
     projectUrl.style.display = '';
     authoritySelect.innerHTML = '';
 
-    authorities.forEach((auth, index) => {
+    // Sort so entries with a known embed URL appear first; preserve the
+    // original array index so updateAuthorityDisplay can look up by index.
+    const sorted = authorities
+        .map((auth, index) => ({ auth, index }))
+        .sort((a, b) => {
+            const aEmbed = a.auth.propertyId in EMBED_URL_BUILDERS ? 0 : 1;
+            const bEmbed = b.auth.propertyId in EMBED_URL_BUILDERS ? 0 : 1;
+            return aEmbed - bEmbed;
+        });
+
+    sorted.forEach(({ auth, index }) => {
         const option = document.createElement('option');
         option.value = index;
         option.textContent = `${auth.propertyLabel} (${auth.propertyId}): ${auth.value}`;
@@ -531,13 +567,14 @@ function updateAuthorityDropdown(qid) {
         updateAuthorityDisplay(qid, parseInt(authoritySelect.value, 10));
     };
 
-    // Load the first authority immediately
-    updateAuthorityDisplay(qid, 0);
+    // Load the first authority in sorted order immediately
+    updateAuthorityDisplay(qid, sorted[0].index);
 }
 
 /**
  * UPDATE AUTHORITY DISPLAY
- * Load the selected authority page URL into the iframe and show it as a link.
+ * Load the selected authority into the iframe using an embed-friendly URL where
+ * one is available, and show the standard page URL as a link.
  * Sites that block iframe embedding via X-Frame-Options will not display in the
  * frame; use the link above to open them in a new tab.
  */
@@ -553,7 +590,7 @@ function updateAuthorityDisplay(qid, index) {
 
     projectUrl.href = auth.url;
     projectUrl.textContent = auth.url;
-    iframe.src = auth.url;
+    iframe.src = getEmbedUrl(auth);
 }
 
 /**
