@@ -531,7 +531,8 @@ const PROJECT_MAP = {
     'Wikipedia': 'wikipedia',
     'Wikisource': 'wikisource',
     'Wikivoyage': 'wikivoyage',
-    'Wikibooks': 'wikibooks'
+    'Wikibooks': 'wikibooks',
+    'Wikinews': 'wikinews'
 };
 
 const MULTILINGUAL_PROJECTS = {
@@ -544,6 +545,7 @@ const PROJECT_DOMAINS = {
     'wikisource': 'wikisource.org',
     'wikivoyage': 'wikivoyage.org',
     'wikibooks': 'wikibooks.org',
+    'wikinews': 'wikinews.org',
     'commons': 'commons.wikimedia.org',
     'meta': 'meta.wikimedia.org'
 };
