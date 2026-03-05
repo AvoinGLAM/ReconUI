@@ -7,8 +7,10 @@ let originalContext = null;
 let isSearching = false;
 let itemSitelinks = {};  // Cache: { qid: { projectType: [{ lang, title, url }, ...] } }
 let itemAuthorityIds = {};  // Cache: { qid: [{ propertyId, propertyLabel, value, url }] }
+let itemWikidataUrls = {};  // Cache: { qid: [{ propertyId, propertyLabel, url }] }
 let currentDisplayedQids = [];       // QIDs currently shown in the result list
 let fetchedAuthorityIdsForQids = new Set();  // QIDs whose authority IDs have already been fetched
+let fetchedWikidataUrlsForQids = new Set();  // QIDs whose Wikidata URLs have already been fetched
 
 // ===== AUTHORITY URL ACCESSIBILITY CACHE =====
 // Persists iframe-embedding status of authority URLs across sessions so blocked
@@ -526,6 +528,81 @@ async function updateAuthorityIdsForQids(qids) {
     console.log("Authority IDs cached for QIDs:", unfetched);
 }
 
+/**
+ * WIKIDATA URLS BATCH QUERY
+ * Fetches direct URL property values for P856 (official website), P953 (work available at URL),
+ * P973 (described at URL), and P1065 (archive URL) for a batch of items.
+ * Batches requests into groups of 10 to avoid Wikidata limits.
+ */
+async function fetchWikidataUrlsForItems(qids) {
+    if (!qids || qids.length === 0) return [];
+
+    const batchSize = 10;
+    const allResults = [];
+
+    for (let i = 0; i < qids.length; i += batchSize) {
+        const batch = qids.slice(i, i + batchSize);
+        const values = batch.map(qid => `wd:${qid}`).join(' ');
+
+        const sparqlQuery = `
+        SELECT ?item ?property ?propertyLabel ?url WHERE {
+            VALUES ?item { ${values} }
+            VALUES ?property { wd:P856 wd:P953 wd:P973 wd:P1065 }
+            ?item ?prop ?url .
+            ?property wikibase:directClaim ?prop .
+            SERVICE wikibase:label { bd:serviceParam wikibase:language "${lang}". }
+        }
+        ORDER BY ?item ?property`;
+
+        try {
+            const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(sparqlQuery)}&format=json`;
+            const response = await fetch(url);
+            const data = await response.json();
+            allResults.push(...data.results.bindings);
+        } catch (error) {
+            console.error("Error fetching Wikidata URLs batch:", error);
+        }
+    }
+
+    return allResults;
+}
+
+/**
+ * PROCESS WIKIDATA URLS RESULTS
+ * Takes raw SPARQL results and caches Wikidata URL properties per item.
+ */
+function processWikidataUrlsResults(results) {
+    const cache = {};
+
+    results.forEach(result => {
+        const qid = result.item.value.split('/').pop();
+        if (!cache[qid]) cache[qid] = [];
+
+        const propertyId = result.property.value.split('/').pop();
+        const propertyLabel = result.propertyLabel?.value || propertyId;
+        const url = result.url.value;
+
+        cache[qid].push({ propertyId, propertyLabel, url });
+    });
+
+    return cache;
+}
+
+/**
+ * FETCH AND CACHE WIKIDATA URLS FOR A LIST OF QIDS
+ * Skips QIDs that have already been fetched (checked against fetchedWikidataUrlsForQids).
+ */
+async function updateWikidataUrlsForQids(qids) {
+    const unfetched = qids.filter(qid => !fetchedWikidataUrlsForQids.has(qid));
+    if (unfetched.length === 0) return;
+
+    const results = await fetchWikidataUrlsForItems(unfetched);
+    const newCache = processWikidataUrlsResults(results);
+    itemWikidataUrls = { ...itemWikidataUrls, ...newCache };
+    unfetched.forEach(qid => fetchedWikidataUrlsForQids.add(qid));
+    console.log("Wikidata URLs cached for QIDs:", unfetched);
+}
+
 // ===== CONSTANTS FOR URL BUILDING =====
 const PROJECT_MAP = {
     'Wikipedia': 'wikipedia',
@@ -757,8 +834,127 @@ function updateAuthorityDisplay(qid, index) {
 }
 
 /**
+ * CHECK AND REFRESH WIKIDATA URL ACCESS FOR A QID
+ * Runs accessibility checks for all Wikidata URLs of the given item in the
+ * background and re-renders the dropdown only if at least one status changed.
+ */
+async function checkAndUpdateWikidataUrlAccess(qid) {
+    const urls = (itemWikidataUrls[qid] || []).map(entry => entry.url);
+    if (urls.length === 0) return;
+
+    const statusesBefore = urls.map(url => getAuthorityStatus(url));
+
+    await Promise.allSettled(urls.map(url => checkAuthorityUrl(url)));
+
+    const anyChanged = urls.some((url, i) => getAuthorityStatus(url) !== statusesBefore[i]);
+    if (!anyChanged) return;
+
+    const viewTypeSelect = document.getElementById('viewTypeSelect');
+    const selectedQid = document.querySelector('.item.selected')?.getAttribute('data-qid');
+    if (viewTypeSelect?.value === 'viewWikidataUrls' && selectedQid === qid) {
+        updateWikidataUrlDropdown(qid);
+    }
+}
+
+/**
+ * UPDATE WIKIDATA URL DROPDOWN
+ * Populate the authority selector with available Wikidata URL properties for the
+ * selected item (P856, P953, P973, P1065).
+ *
+ * Sort order (ascending priority = shown first):
+ *   1 – accessible (no blocking headers detected)
+ *   2 – unknown (CORS prevented header inspection; iframe may still work)
+ *   3 – blocked (X-Frame-Options or CSP frame-ancestors detected)
+ *
+ * Blocked entries are dimmed so users can still open them in a new tab.
+ */
+function updateWikidataUrlDropdown(qid) {
+    const authoritySelect = document.getElementById('authoritySelect');
+    const projectUrl = document.getElementById('projectUrl');
+    const iframe = document.getElementById('projectIframe');
+
+    if (!authoritySelect || !projectUrl || !iframe) return;
+
+    const entries = itemWikidataUrls[qid] || [];
+
+    if (entries.length === 0) {
+        authoritySelect.style.display = 'none';
+        projectUrl.style.display = 'none';
+        iframe.src = 'no-content.html';
+        return;
+    }
+
+    authoritySelect.style.display = '';
+    projectUrl.style.display = '';
+
+    const previousValue = authoritySelect.value;
+    authoritySelect.innerHTML = '';
+
+    const statusRank = { accessible: 1, unknown: 2, blocked: 3 };
+
+    const sorted = entries
+        .map((entry, index) => ({ entry, index }))
+        .sort((a, b) => {
+            const aRank = statusRank[getAuthorityStatus(a.entry.url)] ?? statusRank.unknown;
+            const bRank = statusRank[getAuthorityStatus(b.entry.url)] ?? statusRank.unknown;
+            return aRank - bRank;
+        });
+
+    sorted.forEach(({ entry, index }) => {
+        const option = document.createElement('option');
+        option.value = index;
+
+        const status = getAuthorityStatus(entry.url);
+        let label = `${entry.propertyLabel} (${entry.propertyId}): ${entry.url}`;
+        if (status === 'blocked') {
+            label += ' (blocked)';
+            option.className = 'authority-option-blocked';
+            option.style.color = '#999';
+            option.style.fontStyle = 'italic';
+        }
+        option.textContent = label;
+        authoritySelect.appendChild(option);
+    });
+
+    authoritySelect.onchange = () => {
+        updateWikidataUrlDisplay(qid, parseInt(authoritySelect.value, 10));
+    };
+
+    const previousStillExists = Array.from(authoritySelect.options).some(o => o.value === previousValue);
+    if (previousStillExists) {
+        authoritySelect.value = previousValue;
+    } else {
+        const firstGood = sorted.find(({ entry }) => getAuthorityStatus(entry.url) !== 'blocked');
+        authoritySelect.value = firstGood ? firstGood.index : sorted[0].index;
+    }
+
+    updateWikidataUrlDisplay(qid, parseInt(authoritySelect.value, 10));
+
+    checkAndUpdateWikidataUrlAccess(qid);
+}
+
+/**
+ * UPDATE WIKIDATA URL DISPLAY
+ * Load the selected Wikidata URL into the iframe and show it as a clickable link.
+ */
+function updateWikidataUrlDisplay(qid, index) {
+    const entries = itemWikidataUrls[qid] || [];
+    const entry = entries[index];
+    if (!entry) return;
+
+    const iframe = document.getElementById('projectIframe');
+    const projectUrl = document.getElementById('projectUrl');
+
+    if (!iframe || !projectUrl) return;
+
+    projectUrl.href = entry.url;
+    projectUrl.textContent = entry.url;
+    iframe.src = entry.url;
+}
+
+/**
  * HANDLE VIEW TYPE CHANGE
- * Switch between Wikimedia, Wikidocumentaries, and Authority ID views
+ * Switch between Wikimedia, Wikidocumentaries, Authority ID, and Wikidata URL views
  */
 async function handleViewTypeChange(viewType, qid) {
     const projectSelect = document.getElementById('projectSelect');
@@ -780,6 +976,14 @@ async function handleViewTypeChange(viewType, qid) {
             // Lazy-fetch authority IDs for any currently displayed items not yet fetched
             await updateAuthorityIdsForQids(currentDisplayedQids);
             updateAuthorityDropdown(qid);
+        }
+    } else if (viewType === 'viewWikidataUrls') {
+        if (projectSelect) projectSelect.style.display = 'none';
+        if (languageSelect) languageSelect.style.display = 'none';
+        if (qid) {
+            // Lazy-fetch Wikidata URLs for any currently displayed items not yet fetched
+            await updateWikidataUrlsForQids(currentDisplayedQids);
+            updateWikidataUrlDropdown(qid);
         }
     } else if (viewType === 'viewWikimedia') {
         if (authoritySelect) authoritySelect.style.display = 'none';
@@ -909,6 +1113,11 @@ function updateProjectDropdown(qid) {
 
     if (viewTypeSelect && viewTypeSelect.value === 'viewWebData') {
         handleViewTypeChange('viewWebData', qid);
+        return;
+    }
+
+    if (viewTypeSelect && viewTypeSelect.value === 'viewWikidataUrls') {
+        handleViewTypeChange('viewWikidataUrls', qid);
         return;
     }
 
