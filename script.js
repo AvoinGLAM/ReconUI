@@ -537,9 +537,9 @@ function updateAuthorityDropdown(qid) {
 
 /**
  * UPDATE AUTHORITY DISPLAY
- * Show the selected authority URL as a link. External authority sites commonly
- * block iframe embedding via X-Frame-Options, so the URL is not loaded into
- * the iframe; use the link above to open it in a new tab.
+ * Load the selected authority page URL into the iframe and show it as a link.
+ * Sites that block iframe embedding via X-Frame-Options will not display in the
+ * frame; use the link above to open them in a new tab.
  */
 function updateAuthorityDisplay(qid, index) {
     const authorities = itemAuthorityIds[qid] || [];
@@ -553,7 +553,7 @@ function updateAuthorityDisplay(qid, index) {
 
     projectUrl.href = auth.url;
     projectUrl.textContent = auth.url;
-    iframe.src = 'placeholder.html';
+    iframe.src = auth.url;
 }
 
 /**
