@@ -10,6 +10,129 @@ let itemAuthorityIds = {};  // Cache: { qid: [{ propertyId, propertyLabel, value
 let currentDisplayedQids = [];       // QIDs currently shown in the result list
 let fetchedAuthorityIdsForQids = new Set();  // QIDs whose authority IDs have already been fetched
 
+// ===== AUTHORITY URL ACCESSIBILITY CACHE =====
+// Persists iframe-embedding status of authority URLs across sessions so blocked
+// sources are ranked lower in the dropdown without rechecking every page load.
+// Values per URL: 'accessible' | 'blocked' | 'unknown'
+const AUTHORITY_ACCESS_STORAGE_KEY = 'authorityAccessCache';
+
+function loadAuthorityAccessCache() {
+    try {
+        const stored = localStorage.getItem(AUTHORITY_ACCESS_STORAGE_KEY);
+        return stored ? JSON.parse(stored) : {};
+    } catch {
+        return {};
+    }
+}
+
+function saveAuthorityAccessCache() {
+    try {
+        localStorage.setItem(AUTHORITY_ACCESS_STORAGE_KEY, JSON.stringify(authorityAccessCache));
+    } catch (e) {
+        console.warn('Could not save authority access cache:', e);
+    }
+}
+
+// Cache object: { [url: string]: 'accessible' | 'blocked' | 'unknown' }
+let authorityAccessCache = loadAuthorityAccessCache();
+
+/**
+ * AUTHORITY URL ACCESSIBILITY CHECK
+ * Sends a CORS HEAD request to the URL and inspects the X-Frame-Options and
+ * Content-Security-Policy response headers to determine whether the page can be
+ * embedded in an iframe.
+ *
+ * Possible return values:
+ *   'accessible' – no framing restrictions detected in headers
+ *   'blocked'    – X-Frame-Options DENY/SAMEORIGIN or CSP frame-ancestors blocks embedding
+ *   'unknown'    – CORS prevented reading headers (iframe may still work)
+ *
+ * Results are stored in authorityAccessCache and persisted to localStorage so
+ * each URL is only checked once.
+ */
+async function checkAuthorityUrl(url) {
+    if (authorityAccessCache[url] !== undefined) {
+        return authorityAccessCache[url];
+    }
+
+    let status = 'unknown';
+
+    try {
+        const response = await fetch(url, { method: 'HEAD', mode: 'cors' });
+
+        const xfo = response.headers.get('X-Frame-Options');
+        const csp = response.headers.get('Content-Security-Policy');
+
+        // Assume accessible unless a blocking header is found
+        status = 'accessible';
+
+        if (xfo) {
+            const v = xfo.trim().toUpperCase();
+            if (v === 'DENY' || v === 'SAMEORIGIN') {
+                status = 'blocked';
+            }
+        }
+
+        if (status !== 'blocked' && csp) {
+            const faMatch = csp.match(/frame-ancestors\s+([^;]+)/i);
+            if (faMatch) {
+                const directive = faMatch[1].trim().toLowerCase();
+                // 'none' blocks entirely; bare 'self' blocks all external origins
+                if (directive === "'none'" || directive === "'self'") {
+                    status = 'blocked';
+                }
+            }
+        }
+    } catch {
+        // CORS or network error – headers are unreadable but the iframe may still
+        // load successfully (many sites allow iframe embedding but not CORS fetch).
+        status = 'unknown';
+    }
+
+    authorityAccessCache[url] = status;
+    saveAuthorityAccessCache();
+    return status;
+}
+
+/**
+ * Returns the cached accessibility status for a URL, defaulting to 'unknown'.
+ */
+function getAuthorityStatus(url) {
+    return authorityAccessCache[url] || 'unknown';
+}
+
+/**
+ * CHECK AND REFRESH AUTHORITY ACCESS FOR A QID
+ * Runs accessibility checks for all authority URLs of the given item in the
+ * background and re-renders the dropdown only if at least one status changed,
+ * preventing redundant refreshes once all URLs have been checked.
+ */
+async function checkAndUpdateAuthorityAccess(qid) {
+    const authorities = itemAuthorityIds[qid] || [];
+    if (authorities.length === 0) return;
+
+    // Pre-compute embed URLs once to avoid repeated getEmbedUrl calls
+    const embedUrls = authorities.map(auth => getEmbedUrl(auth));
+
+    // Snapshot statuses before the checks so we can detect changes
+    const statusesBefore = embedUrls.map(url => getAuthorityStatus(url));
+
+    const checks = embedUrls.map(url => checkAuthorityUrl(url));
+    await Promise.allSettled(checks);
+
+    // Only refresh the dropdown if at least one status changed; this prevents
+    // an infinite update loop on subsequent calls when the cache is already warm.
+    const anyChanged = embedUrls.some((url, i) => getAuthorityStatus(url) !== statusesBefore[i]);
+    if (!anyChanged) return;
+
+    // Refresh the dropdown only if the authority view for this QID is still active
+    const viewTypeSelect = document.getElementById('viewTypeSelect');
+    const selectedQid = document.querySelector('.item.selected')?.getAttribute('data-qid');
+    if (viewTypeSelect?.value === 'viewWebData' && selectedQid === qid) {
+        updateAuthorityDropdown(qid);
+    }
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Setup UI elements
@@ -517,8 +640,18 @@ function getEmbedUrl(auth) {
 /**
  * UPDATE AUTHORITY DROPDOWN
  * Populate the authority source selector with available external IDs for the
- * selected item. Entries that have a P2720 embed URL are sorted to the top so
- * the iframe is more likely to show content immediately.
+ * selected item.
+ *
+ * Sort order (ascending priority number = shown first):
+ *   0 – has P2720 embed URL (declared embeddable by Wikidata)
+ *   1 – accessible (no blocking headers detected by checkAuthorityUrl)
+ *   2 – unknown (CORS prevented header inspection; iframe may still work)
+ *   3 – blocked (X-Frame-Options or CSP frame-ancestors detected)
+ *
+ * Blocked entries are moved to the bottom and visually dimmed so users can
+ * still select them and open the link in a new tab if needed.
+ * Background URL checks are kicked off and will refresh the dropdown once
+ * results are available.
  */
 function updateAuthorityDropdown(qid) {
     const authoritySelect = document.getElementById('authoritySelect');
@@ -538,22 +671,41 @@ function updateAuthorityDropdown(qid) {
 
     authoritySelect.style.display = '';
     projectUrl.style.display = '';
+
+    // Remember the currently selected index before rebuilding the list
+    const previousValue = authoritySelect.value;
     authoritySelect.innerHTML = '';
 
-    // Sort so entries with a P2720 embed URL appear first; preserve the
-    // original array index so updateAuthorityDisplay can look up by index.
+    // Numeric rank used for sorting (lower = shown higher in the list)
+    const statusRank = { accessible: 1, unknown: 2, blocked: 3 };
+
     const sorted = authorities
         .map((auth, index) => ({ auth, index }))
         .sort((a, b) => {
+            // Primary: entries with a P2720 embed URL always come first
             const aEmbed = a.auth.embedUrl ? 0 : 1;
             const bEmbed = b.auth.embedUrl ? 0 : 1;
-            return aEmbed - bEmbed;
+            if (aEmbed !== bEmbed) return aEmbed - bEmbed;
+
+            // Secondary: sort by accessibility status
+            const aRank = statusRank[getAuthorityStatus(getEmbedUrl(a.auth))] ?? statusRank.unknown;
+            const bRank = statusRank[getAuthorityStatus(getEmbedUrl(b.auth))] ?? statusRank.unknown;
+            return aRank - bRank;
         });
 
     sorted.forEach(({ auth, index }) => {
         const option = document.createElement('option');
         option.value = index;
-        option.textContent = `${auth.propertyLabel} (${auth.propertyId}): ${auth.value}`;
+
+        const status = getAuthorityStatus(getEmbedUrl(auth));
+        let label = `${auth.propertyLabel} (${auth.propertyId}): ${auth.value}`;
+        if (status === 'blocked') {
+            label += ' (blocked)';
+            option.className = 'authority-option-blocked';
+            option.style.color = '#999';
+            option.style.fontStyle = 'italic';
+        }
+        option.textContent = label;
         authoritySelect.appendChild(option);
     });
 
@@ -561,8 +713,23 @@ function updateAuthorityDropdown(qid) {
         updateAuthorityDisplay(qid, parseInt(authoritySelect.value, 10));
     };
 
-    // Load the first authority in sorted order immediately
-    updateAuthorityDisplay(qid, sorted[0].index);
+    // Restore the previous selection when the dropdown is refreshed after a
+    // background check; otherwise pick the first non-blocked entry (or the
+    // first entry if everything is blocked).
+    const previousStillExists = Array.from(authoritySelect.options).some(o => o.value === previousValue);
+    if (previousStillExists) {
+        authoritySelect.value = previousValue;
+    } else {
+        const firstGood = sorted.find(({ auth }) => getAuthorityStatus(getEmbedUrl(auth)) !== 'blocked');
+        authoritySelect.value = firstGood ? firstGood.index : sorted[0].index;
+    }
+
+    // Load the currently selected authority into the iframe
+    updateAuthorityDisplay(qid, parseInt(authoritySelect.value, 10));
+
+    // Kick off background accessibility checks; the dropdown will be refreshed
+    // automatically when new status information becomes available.
+    checkAndUpdateAuthorityAccess(qid);
 }
 
 /**

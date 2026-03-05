@@ -425,6 +425,12 @@ a.popup-link:hover {
     overflow: hidden; /* Key: hide iframe's scrollbar */
 }
 
+/* Authority dropdown: visually dim options whose URL is blocked from iframe embedding */
+.authority-option-blocked {
+    color: #999;
+    font-style: italic;
+}
+
 #projectUrl {
     padding: 0 4px;
 }
