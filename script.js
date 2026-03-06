@@ -953,6 +953,60 @@ function updateWikidataUrlDisplay(qid, index) {
 }
 
 /**
+ * UPDATE VIEW TYPE AVAILABILITY
+ * Enable or disable view type options based on available data for the selected item.
+ * Options are disabled when data is known to be absent; options are left enabled when
+ * data has not been fetched yet (unknown state).
+ * If the currently selected view is disabled, automatically switches to the first
+ * available view.
+ */
+let _updatingViewTypeAvailability = false;
+function updateViewTypeAvailability(qid) {
+    if (_updatingViewTypeAvailability) return;
+    const viewTypeSelect = document.getElementById('viewTypeSelect');
+    if (!viewTypeSelect || !qid) return;
+
+    // viewWikimedia: sitelinks are always pre-fetched, so we can determine availability
+    const hasWikimedia = getAvailableProjects(qid).length > 0;
+
+    // viewWebData: only disable if we've already fetched and found nothing
+    const webDataFetched = fetchedAuthorityIdsForQids.has(qid);
+    const hasWebData = !webDataFetched || (itemAuthorityIds[qid] || []).length > 0;
+
+    // viewWikidataUrls: only disable if we've already fetched and found nothing
+    const wikidataUrlsFetched = fetchedWikidataUrlsForQids.has(qid);
+    const hasWikidataUrls = !wikidataUrlsFetched || (itemWikidataUrls[qid] || []).length > 0;
+
+    const wikimediaOption = viewTypeSelect.querySelector('option[value="viewWikimedia"]');
+    const webDataOption = viewTypeSelect.querySelector('option[value="viewWebData"]');
+    const wikidataUrlsOption = viewTypeSelect.querySelector('option[value="viewWikidataUrls"]');
+
+    if (wikimediaOption) wikimediaOption.disabled = !hasWikimedia;
+    if (webDataOption) webDataOption.disabled = !hasWebData;
+    if (wikidataUrlsOption) wikidataUrlsOption.disabled = !hasWikidataUrls;
+
+    // If the currently selected view has been disabled, switch to the first available view.
+    // Prefer data-rich views (viewWikimedia, viewWikidocumentaries) before falling back to others.
+    const currentOption = viewTypeSelect.options[viewTypeSelect.selectedIndex];
+    if (currentOption && currentOption.disabled) {
+        const preferredOrder = ['viewWikimedia', 'viewWikidocumentaries', 'viewWebPage'];
+        const autoSwitchTarget = preferredOrder
+            .map(v => viewTypeSelect.querySelector(`option[value="${v}"]`))
+            .find(o => o && !o.disabled)
+            || Array.from(viewTypeSelect.options).find(o => !o.disabled);
+        if (autoSwitchTarget) {
+            viewTypeSelect.value = autoSwitchTarget.value;
+            _updatingViewTypeAvailability = true;
+            try {
+                handleViewTypeChange(autoSwitchTarget.value, qid);
+            } finally {
+                _updatingViewTypeAvailability = false;
+            }
+        }
+    }
+}
+
+/**
  * HANDLE VIEW TYPE CHANGE
  * Switch between Wikimedia, Wikidocumentaries, Authority ID, and Wikidata URL views
  */
@@ -976,6 +1030,7 @@ async function handleViewTypeChange(viewType, qid) {
             // Lazy-fetch authority IDs for any currently displayed items not yet fetched
             await updateAuthorityIdsForQids(currentDisplayedQids);
             updateAuthorityDropdown(qid);
+            updateViewTypeAvailability(qid);
         }
     } else if (viewType === 'viewWikidataUrls') {
         if (projectSelect) projectSelect.style.display = 'none';
@@ -984,6 +1039,7 @@ async function handleViewTypeChange(viewType, qid) {
             // Lazy-fetch Wikidata URLs for any currently displayed items not yet fetched
             await updateWikidataUrlsForQids(currentDisplayedQids);
             updateWikidataUrlDropdown(qid);
+            updateViewTypeAvailability(qid);
         }
     } else if (viewType === 'viewWikimedia') {
         if (authoritySelect) authoritySelect.style.display = 'none';
@@ -1142,6 +1198,7 @@ function updateProjectDropdown(qid) {
         
         // Load no-content page
         iframe.src = 'no-content.html';
+        updateViewTypeAvailability(qid);
         return;
     }
     
@@ -1171,6 +1228,8 @@ function updateProjectDropdown(qid) {
     if (availableProjects.length > 0) {
         updateLanguageDropdown(qid, projectSelect.value);
     }
+
+    updateViewTypeAvailability(qid);
 }
 
 /**
