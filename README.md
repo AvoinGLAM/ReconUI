@@ -1,4 +1,4 @@
-# ReconUI
+# Eka - Wikidata Reconciliation app
 Reconciliation app for Wikidata
 Test @ https://avoinglam.github.io/ReconUI/index.html
 
